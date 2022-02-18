@@ -103,7 +103,7 @@ def train(
     log is True.
     """
     text_chunks = chunk(
-        stream_texts(files), chunk_size=text_chunksize, sample=text_sampling_size
+        stream_texts(files), chunk_size=text_chunksize, sample_size=text_sampling_size
     )
     prev_corpus_count = model.corpus_count
     for texts in text_chunks:
