@@ -1,13 +1,11 @@
-from random import sample
 from typing import Iterable
 from xmlrpc.client import Boolean
+
 import pandas as pd
-from gensim.models import Word2Vec
-from pyparsing import Word
 import wandb
+from gensim.models import Word2Vec
 
 from utils.streams import chunk, sentence_stream, stream_texts
-
 
 odd_df = pd.read_csv("evaluation/odd_one_out.csv")
 odd_one_out = [

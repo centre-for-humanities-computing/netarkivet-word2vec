@@ -1,11 +1,10 @@
-import sys, getopt
+import argparse
 
 from utils.streams import snappy_files
 from utils.training import initialise, train
-import argparse
 
 
-def main():
+def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data_path",
@@ -19,7 +18,8 @@ def main():
         dest="save_path",
         required=True,
         type=str,
-        help="Path, where the model is going to be saved and where the model is initialised from (if load is True)",
+        help="Path, where the model is going to be saved and where the model is "
+        + "initialised from (if load is True)",
     )
     parser.add_argument(
         "--sentence_workers",
@@ -27,7 +27,8 @@ def main():
         required=False,
         default=6,
         type=int,
-        help="Number of processes assigned to yield sentences from the files (optional,default=6)",
+        help="Number of processes assigned to yield sentences from the files (optional,"
+        + "default=6)",
     )
     parser.add_argument(
         "--training_workers",
@@ -59,7 +60,8 @@ def main():
         required=False,
         default=True,
         type=bool,
-        help="Specifies whether to load the already existent model from save_path as an initialization step or not (optional, default=True)",
+        help="Specifies whether to load the already existent model from save_path as an"
+        + " initialization step or not (optional, default=True)",
     )
     parser.add_argument(
         "--text_chunksize",
@@ -67,7 +69,8 @@ def main():
         required=False,
         default=100000,
         type=int,
-        help="Size of chunks of text the model has to work on and shuffle (optional, default=100_000)",
+        help="Size of chunks of text the model has to work on and shuffle (optional, "
+        + "default=100_000)",
     )
     parser.add_argument(
         "--text_samplesize",
@@ -75,8 +78,14 @@ def main():
         required=False,
         default=150000,
         type=int,
-        help="Size sample that has to be drawn randomly from each chunk (optional, default=150_000)",
+        help="Size sample that has to be drawn randomly from each chunk (optional, "
+        + "default=150_000)",
     )
+    return parser
+
+
+def main():
+    parser = create_parser()
     args = parser.parse_args()
     files = snappy_files(data_path=args.data_path)
     print("Initialising model")

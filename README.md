@@ -1,3 +1,3 @@
-# netarkivet-word2vec
+# Netarkivet-word2vec
+Code for training embeddings word2vec on the Danish web archive, Netarkivet. 
 
-Koden til at optræne word2vec embeddings baseret på data fra netarkivet

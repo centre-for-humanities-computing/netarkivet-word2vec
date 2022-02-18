@@ -1,8 +1,9 @@
-from itertools import islice
 import multiprocessing
 import os
 import random
+from itertools import islice
 from typing import Callable, Iterable
+
 import pandas as pd
 
 from utils.text import sentences
