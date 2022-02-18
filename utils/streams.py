@@ -55,7 +55,7 @@ def chunked(chunk_size: int, sample: int = None):
 
     def _chunked(gen_func: Callable):
         def _iterable(*args, **kwargs):
-            return chunk(gen_func(*args, **kwargs), chunk_size, sample=sample)
+            return chunk(gen_func(*args, **kwargs), chunk_size, sample_size=sample)
 
         return _iterable
 
