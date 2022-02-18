@@ -1,3 +1,4 @@
 #!/bin/bash
+KEY=$( cat "wandb.key" )
 pip install gensim wandb argparse
-cat wandb.key | wandb login
+wandb login $KEY
