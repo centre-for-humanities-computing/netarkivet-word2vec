@@ -8,21 +8,21 @@ import argparse
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        ["-d", "--data_path"],
+        "--data_path",
         dest="data_path",
         required=True,
         type=str,
         help="Path to the root directory of the data files",
     )
     parser.add_argument(
-        ["-s", "--save_path"],
+        "--save_path",
         dest="save_path",
         required=True,
         type=str,
         help="Path, where the model is going to be saved and where the model is initialised from (if load is True)",
     )
     parser.add_argument(
-        ["-sw", "--sentence_workers"],
+        "--sentence_workers",
         dest="sentence_workers",
         required=False,
         default=6,
@@ -30,7 +30,7 @@ def main():
         help="Number of processes assigned to yield sentences from the files (optional,default=6)",
     )
     parser.add_argument(
-        ["-tw", "--training_workers"],
+        "--training_workers",
         dest="training_workers",
         required=False,
         default=6,
@@ -38,7 +38,7 @@ def main():
         help="Number of processes assigned to train the model (optional,default=6)",
     )
     parser.add_argument(
-        ["-ws", "--window_size"],
+        "--window_size",
         dest="window_size",
         required=False,
         default=5,
@@ -46,7 +46,7 @@ def main():
         help="Window size of the work2vec model (optional,default=5)",
     )
     parser.add_argument(
-        ["-vs", "--vector_size"],
+        "--vector_size",
         dest="vector_size",
         required=False,
         default=100,
@@ -54,7 +54,7 @@ def main():
         help="Dimensionality of the desired word vectors (optional,default=100)",
     )
     parser.add_argument(
-        ["-l", "--load"],
+        "--load",
         dest="load",
         required=False,
         default=True,
@@ -62,7 +62,7 @@ def main():
         help="Specifies whether to load the already existent model from save_path as an initialization step or not (optional, default=True)",
     )
     parser.add_argument(
-        ["-tc", "--text_chunksize"],
+        "--text_chunksize",
         dest="text_chunksize",
         required=False,
         default=100000,
@@ -70,7 +70,7 @@ def main():
         help="Size of chunks of text the model has to work on and shuffle (optional, default=100_000)",
     )
     parser.add_argument(
-        ["-ts", "--text_samplesize"],
+        "--text_samplesize",
         dest="text_samplesize",
         required=False,
         default=150000,
