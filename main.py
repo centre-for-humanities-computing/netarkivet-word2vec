@@ -8,14 +8,14 @@ import argparse
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        ["data_path", "-d", "--data_path"],
+        ["-d", "--data_path"],
         dest="data_path",
         required=True,
         type=str,
         help="Path to the root directory of the data files",
     )
     parser.add_argument(
-        ["save_path", "-s", "--save_path"],
+        ["-s", "--save_path"],
         dest="save_path",
         required=True,
         type=str,
@@ -65,7 +65,7 @@ def main():
         ["-tc", "--text_chunksize"],
         dest="text_chunksize",
         required=False,
-        default=100_000,
+        default=100000,
         type=int,
         help="Size of chunks of text the model has to work on and shuffle (optional, default=100_000)",
     )
@@ -73,7 +73,7 @@ def main():
         ["-ts", "--text_samplesize"],
         dest="text_samplesize",
         required=False,
-        default=150_000,
+        default=150000,
         type=int,
         help="Size sample that has to be drawn randomly from each chunk (optional, default=150_000)",
     )

@@ -1,15 +1,14 @@
 from itertools import islice
 import multiprocessing
 import os
-from pyclbr import Function
 import random
-from typing import Iterable
+from typing import Callable, Iterable
 import pandas as pd
 
 from utils.text import sentences
 
 
-def reusable(gen_func: Function) -> Function:
+def reusable(gen_func: Callable) -> Callable:
     """
     Function decorator that turns your generator function into an
     iterator, thereby making it reusable.
@@ -54,7 +53,7 @@ def chunked(chunk_size: int, sample: int = None):
     Decorator that chunks a generator function.
     """
 
-    def _chunked(gen_func: Function):
+    def _chunked(gen_func: Callable):
         def _iterable(*args, **kwargs):
             return chunk(gen_func(*args, **kwargs), chunk_size, sample=sample)
 
