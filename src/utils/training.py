@@ -1,48 +1,11 @@
 from typing import Iterable
 from xmlrpc.client import Boolean
 
-import pandas as pd
 import wandb
 from gensim.models import Word2Vec
 
+from utils.evaluation import accuracy_similarities, accuracy_odd_one_out
 from utils.streams import chunk, sentence_stream, stream_texts
-
-odd_df = pd.read_csv("evaluation/odd_one_out.csv")
-odd_one_out = [
-    list(words)
-    for words in zip(odd_df["word1"], odd_df["word2"], odd_df["word3"], odd_df["word4"])
-]
-
-
-def accuracy_analogies(model: Word2Vec) -> float:
-    """
-    Tests model accuracy on the analogies found in evaluation/analogies.txt.
-    Returns accuracy score.
-    TODO: Better analogies and more of them, we gotta get someone to do them.
-    """
-    score, _ = model.wv.evaluate_word_analogies("evaluation/analogies.txt")
-    return score
-
-
-def accuracy_odd_one_out(model: Word2Vec) -> float:
-    """
-    Tests model accuracy on the table provided in evaluation/odd_one_out.csv
-    The model is accurate if it correctly guesses that the words in the fourth
-    column are the odd ones out.
-    TODO:
-        Get more of these and possibly replace them as I stole them from someone.
-        Also gotta do some cleanup and lowercase all words.
-    """
-    N = len(odd_one_out)
-    accurate = 0
-    for words in odd_one_out:
-        if all([word in model.wv.key_to_index for word in words]):
-            if model.wv.doesnt_match(words) == words[3]:
-                accurate += 1
-    if N == 0:
-        return 0
-    accuracy = accurate / N
-    return accuracy
 
 
 def initialise(
@@ -119,15 +82,11 @@ def train(
         if save:
             model.save(f"{save_path}/word2vec.model")
         loss = model.get_latest_training_loss()
-        analogies = accuracy_analogies(model)
         odd = accuracy_odd_one_out(model)
+        sim = accuracy_similarities(model)
         if log:
             wandb.log(
-                {
-                    "loss": loss,
-                    "accuracy_analogies": analogies,
-                    "accuracy_odd_one_out": odd,
-                }
+                {"Loss": loss, "Accuracy - Odd one out": odd, "Similarities R²": sim}
             )
-        print(f"loss: {loss}, acc_an: {analogies}, acc_odd: {odd}")
+        print(f"loss: {loss}, acc_odd: {odd}, sim_r²: {sim}")
         prev_corpus_count = model.corpus_count + prev_corpus_count
