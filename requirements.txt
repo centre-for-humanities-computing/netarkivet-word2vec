@@ -1,6 +1,6 @@
-gensim>=4.1.2,<4.2.0
-wandb>=0.12.24,<0.13.0
-sklearn
+gensim
+wandb
+scipy
 
 # style
 black

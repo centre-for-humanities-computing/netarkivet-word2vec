@@ -1,9 +1,14 @@
+import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
-from sklearn.metrics import r2_score
+from scipy.stats import linregress
 
-odd_df = pd.read_csv("../../evaluation/odd_one_out.csv")
+odd_df = pd.read_csv("../evaluation/odd_one_out.csv")
 odd_one_out = odd_df.to_numpy().tolist()
+
+
+def is_in_vocab(words, model):
+    return np.array([word in model.wv.key_to_index for word in words])
 
 
 def accuracy_odd_one_out(model: Word2Vec) -> float:
@@ -18,6 +23,7 @@ def accuracy_odd_one_out(model: Word2Vec) -> float:
     N = len(odd_one_out)
     accurate = 0
     for words in odd_one_out:
+        words = words[1:]
         if all([word in model.wv.key_to_index for word in words]):
             if model.wv.doesnt_match(words) == words[3]:
                 accurate += 1
@@ -27,7 +33,13 @@ def accuracy_odd_one_out(model: Word2Vec) -> float:
     return accuracy
 
 
-similarity_df = pd.read_csv("../../evaluation/similarity.csv")
+similarity_df = pd.read_csv("../evaluation/similarity.csv")
+
+
+def similarity(words1, words2, model):
+    return np.array(
+        [model.wv.similarity(word1, word2) for word1, word2 in zip(words1, words2)]
+    )
 
 
 def accuracy_similarities(model: Word2Vec) -> float:
@@ -36,8 +48,9 @@ def accuracy_similarities(model: Word2Vec) -> float:
     Returns the absolute coefficient of determination (R^2) between cosine
     similarities between word vectors and human-given scores.
     """
-    human_scores = similarity_df["similarity"]
-    machine_scores = model.wv.n_similarity(
-        similarity_df["word1"], similarity_df["word2"]
-    )
-    return abs(r2_score(human_scores, machine_scores))
+    df = similarity_df
+    df = df[is_in_vocab(df["word1"], model) & is_in_vocab(df["word2"], model)]
+    human_scores = df["similarity"]
+    machine_scores = similarity(df["word1"], df["word2"], model)
+    m = linregress(human_scores, machine_scores)
+    return m.rvalue**2

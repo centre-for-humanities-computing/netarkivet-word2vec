@@ -3,8 +3,9 @@ from xmlrpc.client import Boolean
 
 import wandb
 from gensim.models import Word2Vec
+from gensim.models.callbacks import CallbackAny2Vec
 
-from utils.evaluation import accuracy_similarities, accuracy_odd_one_out
+from utils.evaluation import accuracy_odd_one_out, accuracy_similarities
 from utils.streams import chunk, sentence_stream, stream_texts
 
 
@@ -26,6 +27,7 @@ def initialise(
     if load:
         try:
             model = Word2Vec.load(f"{save_path}/word2vec.model")
+            print("Loading model from save path")
         except FileNotFoundError:
             print(f"Model not found in the directory: {save_path}, creating model")
             model = Word2Vec(
@@ -33,6 +35,7 @@ def initialise(
                 window=window_size,
                 min_count=min_count,
                 workers=workers,
+                compute_loss=True,
             )
     if init_wandb:
         wandb.init(project="netarkivet-wod-embeddings", entity="kardosdrur")
@@ -78,15 +81,21 @@ def train(
             total_examples=model.corpus_count + prev_corpus_count,
             epochs=1,
             compute_loss=True,
+            callbacks=[LogCallback()],
         )
+        # loss = model.get_latest_training_loss()
         if save:
             model.save(f"{save_path}/word2vec.model")
-        loss = model.get_latest_training_loss()
         odd = accuracy_odd_one_out(model)
         sim = accuracy_similarities(model)
         if log:
-            wandb.log(
-                {"Loss": loss, "Accuracy - Odd one out": odd, "Similarities R²": sim}
-            )
-        print(f"loss: {loss}, acc_odd: {odd}, sim_r²: {sim}")
+            wandb.log({"Accuracy - Odd one out": odd, "Similarities R²": sim})
+        print(f"acc_odd: {odd}, sim_r²: {sim}")
         prev_corpus_count = model.corpus_count + prev_corpus_count
+
+
+class LogCallback(CallbackAny2Vec):
+    def on_epoch_end(self, model):
+        loss = model.get_latest_training_loss()
+        wandb.log({"Loss": loss})
+        print(f"Loss: {loss}")
