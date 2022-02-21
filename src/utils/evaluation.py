@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
-from scipy.stats import linregress
+from scipy.stats import spermanr
 
 odd_df = pd.read_csv("../evaluation/odd_one_out.csv")
 odd_one_out = odd_df.to_numpy().tolist()
@@ -16,9 +16,6 @@ def accuracy_odd_one_out(model: Word2Vec) -> float:
     Tests model accuracy on the table provided in evaluation/odd_one_out.csv
     The model is accurate if it correctly guesses that the words in the fourth
     column are the odd ones out.
-    TODO:
-        Get more of these and possibly replace them as I stole them from someone.
-        Also gotta do some cleanup and lowercase all words.
     """
     N = len(odd_one_out)
     accurate = 0
@@ -45,13 +42,14 @@ def similarity(words1, words2, model):
 def accuracy_similarities(model: Word2Vec) -> float:
     """
     Tests the model on word pairs with human annotated similarity scores.
-    Returns the absolute coefficient of determination (R^2) between cosine
-    similarities between word vectors and human-given scores.
+    Returns the Spearman's correlation coefficient between cosine
+    similarities of two word vectors and human-given similarity scores,
+    as well as the extent to which the models vocabulary covers the test vocabulary.
     """
     df = similarity_df
     df = df[is_in_vocab(df["word1"], model) & is_in_vocab(df["word2"], model)]
     human_scores = df["similarity"]
     machine_scores = similarity(df["word1"], df["word2"], model)
-    m = linregress(human_scores, machine_scores)
+    rho, p = spermanr(human_scores, machine_scores)
     vocab_coverage = len(df) / len(similarity_df)
-    return m.rvalue**2, vocab_coverage
+    return rho, vocab_coverage

@@ -90,16 +90,16 @@ def train(
         if save:
             model.save(f"{save_path}/word2vec.model")
         odd = accuracy_odd_one_out(model)
-        sim, vocab_coverage = accuracy_similarities(model)
+        rho, vocab_coverage = accuracy_similarities(model)
         if log:
             wandb.log(
                 {
                     "Accuracy - Odd one out": odd,
-                    "Similarities R²": sim,
+                    "Similarities Sperman's ρ": rho,
                     "Similarities vocabulary coverage": vocab_coverage,
                     "Loss": loss,
                 }
             )
         if verbose:
-            print(f"acc_odd: {odd}, sim_r²: {sim}, loss: {loss}")
+            print(f"acc_odd: {odd}, sim_rho: {odd}, loss: {loss}")
         prev_corpus_count = model.corpus_count + prev_corpus_count
