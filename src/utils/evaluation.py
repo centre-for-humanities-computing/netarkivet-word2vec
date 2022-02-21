@@ -53,4 +53,5 @@ def accuracy_similarities(model: Word2Vec) -> float:
     human_scores = df["similarity"]
     machine_scores = similarity(df["word1"], df["word2"], model)
     m = linregress(human_scores, machine_scores)
-    return m.rvalue**2
+    vocab_coverage = len(df) / len(similarity_df)
+    return m.rvalue**2, vocab_coverage

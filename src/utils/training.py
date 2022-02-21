@@ -24,19 +24,19 @@ def initialise(
     Otherwise initialises a new model with the provided hyperparameters.
     If init_wandb is set to True it also initialises a run at Weights and Biases.
     """
+    model = Word2Vec(
+        vector_size=vector_size,
+        window=window_size,
+        min_count=min_count,
+        workers=workers,
+        compute_loss=True,
+    )
     if load:
         try:
             model = Word2Vec.load(f"{save_path}/word2vec.model")
             print("Loading model from save path")
         except FileNotFoundError:
             print(f"Model not found in the directory: {save_path}, creating model")
-            model = Word2Vec(
-                vector_size=vector_size,
-                window=window_size,
-                min_count=min_count,
-                workers=workers,
-                compute_loss=True,
-            )
     if init_wandb:
         wandb.init(project="netarkivet-wod-embeddings", entity="kardosdrur")
         wandb.config = {
@@ -90,9 +90,16 @@ def train(
         if save:
             model.save(f"{save_path}/word2vec.model")
         odd = accuracy_odd_one_out(model)
-        sim = accuracy_similarities(model)
+        sim, vocab_coverage = accuracy_similarities(model)
         if log:
-            wandb.log({"Accuracy - Odd one out": odd, "Similarities R²": sim})
+            wandb.log(
+                {
+                    "Accuracy - Odd one out": odd,
+                    "Similarities R²": sim,
+                    "Similarities vocabulary coverage": vocab_coverage,
+                    "Loss": loss,
+                }
+            )
         if verbose:
             print(f"acc_odd: {odd}, sim_r²: {sim}, loss: {loss}")
         prev_corpus_count = model.corpus_count + prev_corpus_count
