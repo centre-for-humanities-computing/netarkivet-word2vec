@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
-from scipy.stats import spermanr
+from scipy.stats import spearmanr
 
 odd_df = pd.read_csv("../evaluation/odd_one_out.csv")
 odd_one_out = odd_df.to_numpy().tolist()
@@ -50,6 +50,6 @@ def accuracy_similarities(model: Word2Vec) -> float:
     df = df[is_in_vocab(df["word1"], model) & is_in_vocab(df["word2"], model)]
     human_scores = df["similarity"]
     machine_scores = similarity(df["word1"], df["word2"], model)
-    rho, p = spermanr(human_scores, machine_scores)
+    rho, p = spearmanr(human_scores, machine_scores)
     vocab_coverage = len(df) / len(similarity_df)
     return rho, vocab_coverage

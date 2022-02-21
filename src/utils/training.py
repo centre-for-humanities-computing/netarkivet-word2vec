@@ -3,7 +3,6 @@ from xmlrpc.client import Boolean
 
 import wandb
 from gensim.models import Word2Vec
-from gensim.models.callbacks import CallbackAny2Vec
 
 from utils.evaluation import accuracy_odd_one_out, accuracy_similarities
 from utils.streams import chunk, sentence_stream, stream_texts
