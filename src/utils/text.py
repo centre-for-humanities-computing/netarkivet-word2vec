@@ -2,63 +2,127 @@ import string
 from typing import List
 
 
-def only_dots(s: str) -> str:
+def only_dots(text: str) -> str:
     """
     Exchanges all question marks and exclamation marks in the text for dots.
-    Returns a new string.
+
+    Parameters
+    ----------
+    text: str
+        Text to alter
+
+    Returns
+    ----------
+    text: str
+        New string containing only dots
     """
-    return s.translate(str.maketrans({"?": ".", "!": ".", ";": "."}))
+    return text.translate(str.maketrans({"?": ".", "!": ".", ";": "."}))
 
 
-def sentencize(s: str) -> List[str]:
+def sentencize(text: str) -> List[str]:
     """
-    Sentencizes text. Returns a list of all sentences in the text.
+    Sentencizes text
+
+    Parameters
+    ----------
+    text: str
+        Text to sentencize
+
+    Returns
+    ----------
+    sentences: List[str]
+        List of sentence strings
     """
-    s = only_dots(s)
-    return s.split(".")
+    text = only_dots(text)
+    return text.split(".")
 
 
-def remove_digits(s: str) -> str:
+def remove_digits(text: str) -> str:
     """
     Removes all digits from the text.
-    Returns a new string.
+
+    Parameters
+    ----------
+    text: str
+        Text to alter
+
+    Returns
+    ----------
+    text: str
+        New string without digits
     """
-    return s.translate(str.maketrans("", "", string.digits))
+    return text.translate(str.maketrans("", "", string.digits))
 
 
-punct = "\"#$%&'()*+,-/:<=>@[\\]^_`{|}~"
+PUNCT = "\"#$%&'()*+,-/:<=>@[\\]^_`{|}~"
 
 
-def remove_punctuation(s: str) -> str:
+def remove_punctuation(text: str) -> str:
     """
     Replaces all punctuation from the text with spaces
     except for dots, exclamation marks and question marks.
-    Returns a new string.
+
+    Parameters
+    ----------
+    text: str
+        Text to alter
+
+    Returns
+    ----------
+    text: str
+        New string without punctuation
     """
-    return s.translate(str.maketrans(punct, " " * len(punct)))
+    return text.translate(str.maketrans(PUNCT, " " * len(PUNCT)))
 
 
-def normalize(s: str) -> str:
+def normalize(text: str) -> str:
     """
     Removes digits and punctuation from the text supplied.
-    Returns new string.
+
+    Parameters
+    ----------
+    text: str
+        Text to alter
+
+    Returns
+    ----------
+    text: str
+        New normalized string
     """
-    s = remove_digits(s)
-    s = remove_punctuation(s)
-    return s
+    text = remove_digits(text)
+    text = remove_punctuation(text)
+    return text
 
 
-def tokenize(s: str) -> List[str]:
+def tokenize(text: str) -> List[str]:
     """
     Tokenizes cleaned text.
-    Returns a list of tokens.
+
+    Parameters
+    ----------
+    text: str
+        Text to tokenize
+
+    Returns
+    ----------
+    tokens: List[str]
+        List of tokens
     """
-    return s.lower().split()
+    return text.lower().split()
 
 
 def sentences(text: str) -> List[List[str]]:
     """
     Cleans up the text, sentencizes and tokenizes it.
-    Returns a list of sentences in the form of a list of tokens.
+
+    Parameters
+    ----------
+    text: str
+        Text to sentencize
+
+    Returns
+    ----------
+    sentences: List[List[str]]
+        List of sentences in the form of list of tokens.
     """
     return [tokenize(sentence) for sentence in sentencize(normalize(text))]

@@ -1,10 +1,17 @@
 import argparse
 
-from utils.streams import snappy_files
 from utils.training import initialise, train
 
 
-def create_parser():
+def create_parser() -> argparse.ArgumentParser:
+    """
+    Generates parser for the main functiuon CLI.
+
+    Returns
+    ----------
+    parser: argparse.ArgumentParser
+        The parser boiii
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data_path",
@@ -84,15 +91,13 @@ def create_parser():
     return parser
 
 
-def main():
+def main() -> None:
     parser = create_parser()
     args = parser.parse_args()
-    files = snappy_files(data_path=args.data_path)
     print("Initialising model")
     model = initialise(
-        args.save_path,
+        save_path=args.save_path if args.load else None,
         init_wandb=True,
-        load=args.load,
         vector_size=args.vector_size,
         window_size=args.window_size,
         workers=args.training_workers,
@@ -100,7 +105,7 @@ def main():
     print("Training sequence started")
     train(
         model,
-        files,
+        data_path=args.data_path,
         save_path=args.save_path,
         log=True,
         save=True,

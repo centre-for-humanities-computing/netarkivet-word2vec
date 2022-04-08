@@ -1,73 +1,97 @@
-from typing import Iterable
-from xmlrpc.client import Boolean
+import warnings
+from typing import Optional
 
 import wandb
 from gensim.models import Word2Vec
 
 from utils.evaluation import accuracy_odd_one_out, accuracy_similarities
-from utils.streams import chunk, sentence_stream, stream_texts
+from utils.streams import chunk, sentence_stream, stream_cleaned_texts
 
 
 def initialise(
-    save_path: str,
-    init_wandb: bool = True,
-    vector_size: int = 100,
-    window_size: int = 5,
-    min_count: int = 5,
-    workers: int = 6,
-    load: bool = True,
+    save_path: Optional[str] = ".", init_wandb: bool = True, **hyperparameters
 ) -> Word2Vec:
     """
     If a word2vec model has previously been saved to save_path,
     it loads the model.
     Otherwise initialises a new model with the provided hyperparameters.
     If init_wandb is set to True it also initialises a run at Weights and Biases.
+
+    Parameters
+    ----------
+    save_path: str or None, default None
+        Path where the model has been previously saved.
+        If not specified the model won't  be loaded but freshly
+        created instead.
+    init_wandb: bool, default True
+        Specifies whether a Wandb run should be initialised.
+    **hyperparameters:
+        Set of hyperparameters to initialise the model with if it's not loaded
+
+    Returns
+    ----------
+    model: Word2Vec
+        Initialised model
     """
-    model = Word2Vec(
-        vector_size=vector_size,
-        window=window_size,
-        min_count=min_count,
-        workers=workers,
-        compute_loss=True,
-    )
-    if load:
+    model = Word2Vec(compute_loss=True, **hyperparameters)
+    if save_path is not None:
         try:
             model = Word2Vec.load(f"{save_path}/word2vec.model")
             print("Loading model from save path")
         except FileNotFoundError:
-            print(f"Model not found in the directory: {save_path}, creating model")
+            warnings.warn(
+                f"Model not found in the directory: {save_path}, creating model",
+                RuntimeWarning,
+            )
     if init_wandb:
         wandb.init(project="netarkivet-wod-embeddings", entity="kardosdrur")
-        wandb.config = {
-            "vector_size": vector_size,
-            "window": window_size,
-            "min_count": min_count,
-        }
+        wandb.config = hyperparameters
     return model
 
 
 def train(
     model: Word2Vec,
-    files: Iterable,
+    data_path: str = ".",
     save_path: str = ".",
     text_chunksize: int = 100_000,
     text_sampling_size: int = 150_000,
     window_size: int = 5,
-    log: Boolean = True,
-    save: Boolean = True,
-    sentence_workers=6,
-    verbose=False,
-):
+    log: bool = True,
+    save: bool = True,
+    sentence_workers: int = 6,
+    verbose: bool = False,
+) -> None:
     """
-    Trains word2vec model on ll texts in the supplied files iterable.
-    It progresses in chunks of text_chunksize texts, and takes a random
-    uniform sample (with replacement) from the current chunks.
-    After training on each chunk the model is saved to save_path is save is True,
-    and loss and accuracy metrics are logged to Weights and Biases if
-    log is True.
+    Trains word2vec model on all texts under the supplied data_path
+
+    Parameters
+    ----------
+    model: Word2Vec
+        The model object to train
+    data_path: str, default "."
+        Path to load the data from
+    save_path: str, default "."
+        Path to save the model to after each epoch
+    text_chunksize: int, default 100_000
+        Amount of texts that should be processed in one epoch
+    text_sampling_size: int, default 150_000
+        Amount of samples that should be randomly sampled from the chunks
+        before they get fed to the model
+    window_size: int, default 5
+        Window size of the Word2Vec model
+    log: bool, defualt True
+        Specifies whether the training sequence should be logged to Wandb
+    save: bool, default True
+        Specifies whether the model should be saved after each epoch
+    sentence_workers: int, default 6
+        The amount of workers the sentence stream should use
+    verbose: bool, default False
+        Specifies whether the training sequence should be logged to stdout
     """
     text_chunks = chunk(
-        stream_texts(files), chunk_size=text_chunksize, sample_size=text_sampling_size
+        stream_cleaned_texts(data_path),
+        chunk_size=text_chunksize,
+        sample_size=text_sampling_size,
     )
     prev_corpus_count = model.corpus_count
     for texts in text_chunks:
@@ -81,7 +105,7 @@ def train(
         )
         model.train(
             corpus_iterable=sentences,
-            total_examples=model.corpus_count + prev_corpus_count,
+            total_examples=model.corpus_count + prev_corpus_count,  # type: ignore
             epochs=1,
             compute_loss=True,
         )
@@ -101,4 +125,4 @@ def train(
             )
         if verbose:
             print(f"acc_odd: {odd}, sim_rho: {odd}, loss: {loss}")
-        prev_corpus_count = model.corpus_count + prev_corpus_count
+        prev_corpus_count = model.corpus_count + prev_corpus_count  # type: ignore
