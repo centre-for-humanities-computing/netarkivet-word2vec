@@ -1,9 +1,10 @@
+import json
 import multiprocessing
 import os
 import random
 import re
 from itertools import islice
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Iterable, List, Optional, Set, TypeVar
 
 import pandas as pd
 
@@ -100,32 +101,38 @@ def chunked(chunk_size: int, sample_size: Optional[int] = None) -> Callable:
     return _chunked
 
 
-# DEPRECATED
+BAR_LENGTH = 100
+N_DECIMALS = 1
+FILL_CHARACTER = "█"
+
+U = TypeVar("U")
 
 
 @reusable
-def __snappy_files(data_path: str = "."):
+def progress_bar_stream(items: List[U]) -> Iterable[U]:
     """
-    Generator function yielding all snappy parquet file paths
-    from the directory - data_path
-    """
-    for root, dirs, files in os.walk(data_path):
-        for file in files:
-            file_path = os.path.join(root, file)
-            if file.endswith(".snappy.parquet") and os.path.isfile(file_path):
-                yield file_path
+    Wraps list in an iterable that shows a progress bar and the current element.
 
+    Parameters
+    ----------
+    items: list of U
+        Items to iterate over (of type U)
 
-# DEPRECATED
-def __stream_texts(files: Iterable):
+    Yields
+    ----------
+    item: U
+        Current item under processing
     """
-    Generator function that streams all texts from all file paths.
-    """
-    for file in files:
-        df = pd.read_parquet(file)
-        df = df[df["language"] == "da"]
-        for text in df["content"]:
-            yield text
+    total = len(items)
+    for iteration, item in enumerate(items):
+        percent = ("{0:." + str(N_DECIMALS) + "f}").format(
+            100 * (iteration / float(total))
+        )
+        filledLength = int(BAR_LENGTH * iteration // total)
+        bar = FILL_CHARACTER * filledLength + "-" * (BAR_LENGTH - filledLength)
+        os.system("clear")
+        print(f"Progress: |{bar}| {percent}% \n Current item processed: {item}\n")
+        yield item
 
 
 def get_years(data_path: str = ".") -> List[str]:
@@ -146,12 +153,71 @@ def get_years(data_path: str = ".") -> List[str]:
     for root, dirs, files in os.walk(data_path):
         for directory in dirs:
             if re.match(r"\d\d\d\d", directory):
-                years.append(dir)
+                years.append(directory)
     return years
 
 
+def not_duplicates(mask_filename: str) -> pd.DataFrame:
+    """
+    Gives ya all ids in a mask file that are not duplicates
+
+    Parameters
+    ----------
+    mask_filename: str
+        Path to the mask file
+
+    Returns
+    ----------
+    df: pd.DataFrame of structure {'file_id': int, 'text_id': int}
+        DataFrame containing file ids and text IDs
+    """
+    # Lists to store the ids
+    file_ids = []
+    text_ids = []
+    with open(mask_filename) as mask_file:
+        for line in mask_file:
+            # Parse all records in the jsonl
+            record = json.loads(line)
+            if not record["duplicate"]:
+                # Parse file id and text id from id field
+                # The first is ommited, as it stores the year
+                _, file_id, text_id = record["id"].split("_")
+                # Convert them to int so they don't take up as much space in memory
+                # and are easier to work with
+                file_id, text_id = int(file_id), int(text_id)
+                file_ids.append(file_id)
+                text_ids.append(text_id)
+    df = pd.DataFrame({"file_id": file_ids, "text_id": text_ids})
+    return df
+
+
+def stream_by_text_id(file_path: str, text_ids: Set) -> Iterable[str]:
+    """
+    Streams all texts from a jsonl file that are in the set of text_ids supplied.
+
+    Parameters
+    ----------
+    file_path: str
+        Path to the jsonl file in question
+
+    Yields
+    ----------
+    text: str
+        Text content of the given fields
+    """
+    with open(file_path) as input_file:
+        # Since id is not one of the fields, I have to enumerate all records
+        for text_id, line in enumerate(input_file):
+            if text_id in text_ids:
+                # parsing the record
+                record = json.loads(line)
+                # If passes quality filters, it yields the content of the record
+                if record["passed_quality_filter"] and record["language"] == "da":
+                    yield record["text"]
+
+
 @reusable
-def stream_cleaned_texts(data_path: str = ".") -> Iterable[str]:
+def stream_cleaned_texts(data_path: str = ".", verbose=True) -> Iterable[str]:
     """
     Generator yielding all cleaned texts, that are not duplicates :)
 
@@ -163,41 +229,63 @@ def stream_cleaned_texts(data_path: str = ".") -> Iterable[str]:
     Yields
     ----------
     text: str
-        Cleaned text
+        Cleaned, normalized text
     """
+    # List of all years
     years = get_years(data_path=data_path)
     for year in years:
-        duplicates_df = pd.read_json(
-            f"{data_path}/deduplicated/{year}/mask.jsonl",
-            orient="records",  # the data is stored in the form of records
-            lines=True,  # in a jsonl file, meaning that all records are at a new line
-            dtype=False,  # We don't let the type to be inferred cause it fucks up the id
-        )
-        # since the id column is of format: "{year}_{file_id}_{text_id},"
-        # I expand it to three new columns
-        duplicates_df = duplicates_df.join(
-            duplicates_df["id"]
-            .str.split("_", expand=True)
-            .rename(columns={0: "year", 1: "file_id", 2: "text_id"})  # type: ignore
-            .astype({"year": "int32", "file_id": "int32", "text_id": "int32"})
-        )
-        for file_id in duplicates_df["file_id"]:
-            # Loading in the current file to process
-            file_df = pd.read_json(
-                f"{data_path}/{year}/{file_id}.jsonl", orient="records", lines=True
-            )
-            # I add a column to the DataFrame based on duplicates_df to see if the text is
-            # a duplicate or not
-            file_df = file_df.join(
-                duplicates_df[duplicates_df["file_id"] == file_id].set_index("text_id")[
-                    "duplicate"
-                ]
-            )
-            # Filtering out duplicates
-            file_df = file_df[~file_df["duplicate"]]
-            # Yield all remaining texts
-            for text in file_df["text"]:
+        if verbose:
+            print("Processing year: ", year)
+        mask = os.path.join(data_path, f"deduplicated/{year}/mask.jsonl")
+        mask_year = not_duplicates(mask_filename=mask)
+        # All unique file ids, so that we can iterate over them
+        file_ids = mask_year["file_id"].unique()
+        for file_id in file_ids:
+            if verbose:
+                print("   Processing file: ", file_id)
+            # All text ids that are in the file
+            text_ids = mask_year["text_id"][mask_year["file_id"] == file_id]
+            # A set of unique text ids that are not duplicates
+            # it's a set cause it checks for membership in O(1) time :))
+            # I run pandas' unique method firs tho, cause it runs in C or sth
+            # So it's about 50 times as fast
+            text_ids = set(text_ids.unique())
+            for text in stream_by_text_id(
+                os.path.join(data_path, f"{year}/{file_id}.jsonl"), text_ids=text_ids
+            ):
                 yield text
+
+
+T = TypeVar("T")
+
+
+@reusable
+def reservoir_sample(stream: Iterable[T], sample_size: int) -> List[T]:
+    """
+    Samples a given number of items randomly from a stream of unknown length.
+    An implementation of Algorithm R by Alan Waterman.
+
+    Parameters
+    ----------
+    stream: Iterable[T]
+        The stream to sample from.
+    sample_size: int
+        Number of items to sample.
+
+    Returns
+    ----------
+    reservoir: List[T]
+        Random sample from the stream.
+    """
+    reservoir = []
+    for index, item in enumerate(stream):
+        if index < sample_size:
+            reservoir.append(item)
+        else:
+            j = random.randint(0, index)
+            if j <= sample_size:
+                reservoir[j] = item
+    return reservoir
 
 
 def sentence_stream(
