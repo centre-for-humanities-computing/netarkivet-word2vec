@@ -3,3 +3,9 @@ wandb.key
 
 # Python
 *.pyc
+
+*.ipynb_checkpoints/
+.mypy_cache/
+.vscode/
+
+*.ipynb
