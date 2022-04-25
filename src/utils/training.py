@@ -51,8 +51,9 @@ def initialise(
 
 def train(
     model: Word2Vec,
-    data_path: str = ".",
-    save_path: str = ".",
+    data_path: str,
+    save_path: str,
+    non_duplicates_path: str,
     text_chunksize: int = 100_000,
     text_sampling_size: int = 150_000,
     window_size: int = 5,
@@ -68,10 +69,12 @@ def train(
     ----------
     model: Word2Vec
         The model object to train
-    data_path: str, default "."
+    data_path: str
         Path to load the data from
-    save_path: str, default "."
+    save_path: str
         Path to save the model to after each epoch
+    non_duplicates_path: str
+        Path to non duplicate id numpy files
     text_chunksize: int, default 100_000
         Amount of texts that should be processed in one epoch
     text_sampling_size: int, default 150_000
@@ -89,7 +92,7 @@ def train(
         Specifies whether the training sequence should be logged to stdout
     """
     text_chunks = chunk(
-        stream_cleaned_texts(data_path),
+        stream_cleaned_texts(data_path, non_duplicates_path, verbose),
         chunk_size=text_chunksize,
         sample_size=text_sampling_size,
     )

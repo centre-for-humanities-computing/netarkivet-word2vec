@@ -29,6 +29,13 @@ def create_parser() -> argparse.ArgumentParser:
         + "initialised from (if load is True)",
     )
     parser.add_argument(
+        "--non_duplicates_path",
+        dest="non_duplicates_path",
+        required=True,
+        type=str,
+        help="Path, where non_duplicate id numpy files are stored",
+    )
+    parser.add_argument(
         "--sentence_workers",
         dest="sentence_workers",
         required=False,
@@ -107,6 +114,7 @@ def main() -> None:
         model,
         data_path=args.data_path,
         save_path=args.save_path,
+        non_duplicates_path=args.non_duplicates_path,
         log=True,
         save=True,
         text_chunksize=args.text_chunksize,

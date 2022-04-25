@@ -5,6 +5,7 @@ import random
 import re
 from itertools import islice, zip_longest
 from typing import Callable, Iterable, List, Optional, Set, TypeVar
+import numpy as np
 
 import pandas as pd
 
@@ -161,40 +162,6 @@ def get_years(data_path: str = ".") -> List[str]:
     return years
 
 
-def not_duplicates(mask_filename: str) -> pd.DataFrame:
-    """
-    Gives ya all ids in a mask file that are not duplicates
-
-    Parameters
-    ----------
-    mask_filename: str
-        Path to the mask file
-
-    Returns
-    ----------
-    df: pd.DataFrame of structure {'file_id': int, 'text_id': int}
-        DataFrame containing file ids and text IDs
-    """
-    # Lists to store the ids
-    file_ids = []
-    text_ids = []
-    with open(mask_filename) as mask_file:
-        for line in mask_file:
-            # Parse all records in the jsonl
-            record = json.loads(line)
-            if not record["duplicate"]:
-                # Parse file id and text id from id field
-                # The first is ommited, as it stores the year
-                _, file_id, text_id = record["id"].split("_")
-                # Convert them to int so they don't take up as much space in memory
-                # and are easier to work with
-                file_id, text_id = int(file_id), int(text_id)
-                file_ids.append(file_id)
-                text_ids.append(text_id)
-    non_duplicate_df = pd.DataFrame({"file_id": file_ids, "text_id": text_ids})
-    return non_duplicate_df
-
-
 def stream_by_text_id(file_path: str, text_ids: Set) -> Iterable[str]:
     """
     Streams all texts from a jsonl file that are in the set of text_ids supplied.
@@ -221,7 +188,9 @@ def stream_by_text_id(file_path: str, text_ids: Set) -> Iterable[str]:
 
 
 @reusable
-def stream_year(data_path: str, year: str, verbose: bool = True) -> Iterable[str]:
+def stream_year(
+    data_path: str, non_duplicates_path: str, year: str, verbose: bool = True
+) -> Iterable[str]:
     """
     Streams all texts from a given year.
 
@@ -229,6 +198,8 @@ def stream_year(data_path: str, year: str, verbose: bool = True) -> Iterable[str
     ----------
     data_path: str
         Path to the dataset
+    non_duplicates_path: str
+        Path, where non duplicate id numpy files are
     year: str
         The year from which texts should be streamed.
     verbose: bool, default True
@@ -239,36 +210,31 @@ def stream_year(data_path: str, year: str, verbose: bool = True) -> Iterable[str
     text: str
         Text content from the given year.
     """
-    mask = os.path.join(data_path, f"deduplicated/{year}/mask.jsonl")
-    mask_year = not_duplicates(mask_filename=mask)
-    # All unique file ids, so that we can iterate over them
-    file_ids = mask_year["file_id"].unique()
-    for file_id in file_ids:
-        if verbose:
-            print(f"Processing file: {year}/{file_id}")
-        # All text ids that are in the file
-        text_ids = mask_year["text_id"][mask_year["file_id"] == file_id]
-        # A set of unique text ids that are not duplicates
-        # it's a set cause it checks for membership in O(1) time :))
-        # I run pandas' unique method firs tho, cause it runs in C or sth
-        # So it's about 50 times as fast
-        text_ids = set(text_ids.unique())
-        for text in stream_by_text_id(
-            os.path.join(data_path, f"{year}/{file_id}.jsonl"), text_ids=text_ids
-        ):
-            yield text
+    for root, _, files in os.walk(os.path.join(non_duplicates_path, year)):
+        for mask_file in files:
+            if mask_file.endswith(".npy"):
+                file_id = mask_file.split(".")[0]
+                text_ids = set(np.load(os.path.join(root, mask_file)))
+                for text in stream_by_text_id(
+                    os.path.join(data_path, f"{year}/{file_id}.jsonl"),
+                    text_ids=text_ids,
+                ):
+                    yield text
 
 
 @reusable
-def stream_cleaned_texts(data_path: str = ".", verbose=True) -> Iterable[str]:
+def stream_cleaned_texts(
+    data_path: str, non_duplicates_path: str, verbose=True
+) -> Iterable[str]:
     """
     Generator yielding all cleaned texts, that are not duplicates :)
 
     Parameters
     ----------
-    data_path: str, default '.'
+    data_path: str
         Specifies where our data lives, where to get file contents from.
-
+    non_duplicates_path: str
+        Path, where non duplicate id numpy files are
     Yields
     ----------
     text: str
@@ -277,7 +243,10 @@ def stream_cleaned_texts(data_path: str = ".", verbose=True) -> Iterable[str]:
     # List of all years
     years = get_years(data_path=data_path)
     # Collects streams of all years into a list
-    year_streams = [stream_year(data_path, year, verbose=verbose) for year in years]
+    year_streams = [
+        stream_year(data_path, non_duplicates_path, year, verbose=verbose)
+        for year in years
+    ]
     # Streams texts from all years at the same time, so that the data is more shuffled
     # We use the zip_longest function from itertools, so that we iterate as
     # long as the longest iterable is not exhausted
