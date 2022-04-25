@@ -3,12 +3,12 @@ import multiprocessing
 import os
 import random
 import re
-from itertools import islice
+from itertools import islice, zip_longest
 from typing import Callable, Iterable, List, Optional, Set, TypeVar
 
 import pandas as pd
 
-from utils.text import sentences
+import utils.text
 
 
 def reusable(gen_func: Callable) -> Callable:
@@ -128,10 +128,14 @@ def progress_bar_stream(items: List[U]) -> Iterable[U]:
         percent = ("{0:." + str(N_DECIMALS) + "f}").format(
             100 * (iteration / float(total))
         )
-        filledLength = int(BAR_LENGTH * iteration // total)
-        bar = FILL_CHARACTER * filledLength + "-" * (BAR_LENGTH - filledLength)
+        filled_length = int(BAR_LENGTH * iteration // total)
+        progress_bar = FILL_CHARACTER * filled_length + "-" * (
+            BAR_LENGTH - filled_length
+        )
         os.system("clear")
-        print(f"Progress: |{bar}| {percent}% \n Current item processed: {item}\n")
+        print(
+            f"Progress: |{progress_bar}| {percent}% \n Current item processed: {item}\n"
+        )
         yield item
 
 
@@ -187,8 +191,8 @@ def not_duplicates(mask_filename: str) -> pd.DataFrame:
                 file_id, text_id = int(file_id), int(text_id)
                 file_ids.append(file_id)
                 text_ids.append(text_id)
-    df = pd.DataFrame({"file_id": file_ids, "text_id": text_ids})
-    return df
+    non_duplicate_df = pd.DataFrame({"file_id": file_ids, "text_id": text_ids})
+    return non_duplicate_df
 
 
 def stream_by_text_id(file_path: str, text_ids: Set) -> Iterable[str]:
@@ -217,6 +221,45 @@ def stream_by_text_id(file_path: str, text_ids: Set) -> Iterable[str]:
 
 
 @reusable
+def stream_year(data_path: str, year: str, verbose: bool = True) -> Iterable[str]:
+    """
+    Streams all texts from a given year.
+
+    Parameters
+    ----------
+    data_path: str
+        Path to the dataset
+    year: str
+        The year from which texts should be streamed.
+    verbose: bool, default True
+        Specifies whether the stream should print which text is being processed.
+
+    Yields
+    ----------
+    text: str
+        Text content from the given year.
+    """
+    mask = os.path.join(data_path, f"deduplicated/{year}/mask.jsonl")
+    mask_year = not_duplicates(mask_filename=mask)
+    # All unique file ids, so that we can iterate over them
+    file_ids = mask_year["file_id"].unique()
+    for file_id in file_ids:
+        if verbose:
+            print(f"Processing file: {year}/{file_id}")
+        # All text ids that are in the file
+        text_ids = mask_year["text_id"][mask_year["file_id"] == file_id]
+        # A set of unique text ids that are not duplicates
+        # it's a set cause it checks for membership in O(1) time :))
+        # I run pandas' unique method firs tho, cause it runs in C or sth
+        # So it's about 50 times as fast
+        text_ids = set(text_ids.unique())
+        for text in stream_by_text_id(
+            os.path.join(data_path, f"{year}/{file_id}.jsonl"), text_ids=text_ids
+        ):
+            yield text
+
+
+@reusable
 def stream_cleaned_texts(data_path: str = ".", verbose=True) -> Iterable[str]:
     """
     Generator yielding all cleaned texts, that are not duplicates :)
@@ -229,30 +272,20 @@ def stream_cleaned_texts(data_path: str = ".", verbose=True) -> Iterable[str]:
     Yields
     ----------
     text: str
-        Cleaned, normalized text
+        Cleaned text
     """
     # List of all years
     years = get_years(data_path=data_path)
-    for year in years:
-        if verbose:
-            print("Processing year: ", year)
-        mask = os.path.join(data_path, f"deduplicated/{year}/mask.jsonl")
-        mask_year = not_duplicates(mask_filename=mask)
-        # All unique file ids, so that we can iterate over them
-        file_ids = mask_year["file_id"].unique()
-        for file_id in file_ids:
-            if verbose:
-                print("   Processing file: ", file_id)
-            # All text ids that are in the file
-            text_ids = mask_year["text_id"][mask_year["file_id"] == file_id]
-            # A set of unique text ids that are not duplicates
-            # it's a set cause it checks for membership in O(1) time :))
-            # I run pandas' unique method firs tho, cause it runs in C or sth
-            # So it's about 50 times as fast
-            text_ids = set(text_ids.unique())
-            for text in stream_by_text_id(
-                os.path.join(data_path, f"{year}/{file_id}.jsonl"), text_ids=text_ids
-            ):
+    # Collects streams of all years into a list
+    year_streams = [stream_year(data_path, year, verbose=verbose) for year in years]
+    # Streams texts from all years at the same time, so that the data is more shuffled
+    # We use the zip_longest function from itertools, so that we iterate as
+    # long as the longest iterable is not exhausted
+    # Once a shorter iterable is exhausted, we will get None values.
+    for texts in zip_longest(*year_streams, fillvalue=None):
+        for text in texts:
+            # If the text is not from an exhausted stream, we yield it
+            if text is not None:
                 yield text
 
 
@@ -288,15 +321,44 @@ def reservoir_sample(stream: Iterable[T], sample_size: int) -> List[T]:
     return reservoir
 
 
+@reusable
+def document_stream(
+    texts: Iterable[str], chunksize: int = 2000, workers: int = 6
+) -> Iterable[List[str]]:
+    """
+    Streams documents from the given text stream.
+
+    Parameters
+    ----------
+    texts: Iterable of str
+        Text stream to normalize and tokenize
+    chunksize: int, default 2000
+        Size of text chunks the stream should process in parallel
+    workers: int, default 6
+        Number of workers the stream should use to sentencize
+        the texts coming from the stream
+    """
+    with multiprocessing.Pool(processes=workers) as pool:
+        # We use imap_unordered, as the order of the documents does not matter for training
+        # Doc2Vec, in fact it's better if they are shuffled
+        # This stream is going to be chunked and sampled anyway
+        docs = pool.imap_unordered(
+            utils.text.normalized_document, texts, chunksize=chunksize
+        )
+        for doc in docs:
+            yield doc
+
+
+@reusable
 def sentence_stream(
     texts: Iterable[str], window_size: int = 5, chunksize: int = 2000, workers: int = 6
-) -> Iterable:
+) -> Iterable[List[str]]:
     """
     Streams sentences from the given text stream.
 
     Parameters
     ----------
-    texts: Iterable[str]
+    texts: Iterable of str
         Text stream to sentencize
     window_size: int, default 5
         Windows size of the word2vec model.
@@ -310,11 +372,14 @@ def sentence_stream(
 
     Yields
     ----------
-    sentence: List[str]
+    sentence: list of str
         List of words in a sentence
     """
     with multiprocessing.Pool(processes=workers) as pool:
-        docs = pool.imap_unordered(sentences, texts, chunksize=chunksize)
+        docs = pool.imap_unordered(utils.text.sentences, texts, chunksize=chunksize)
+        # We use imap_unordered, as the order of the sentences does not matter for training
+        # Word2Vec, in fact it's better if they are shuffled
+        # This stream is going to be chunked and sampled anyway
         for doc in docs:
             for sentence in doc:
                 if len(sentence) >= window_size:

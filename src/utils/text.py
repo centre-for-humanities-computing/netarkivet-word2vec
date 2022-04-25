@@ -30,7 +30,7 @@ def sentencize(text: str) -> List[str]:
 
     Returns
     ----------
-    sentences: List[str]
+    sentences: list of str
         List of sentence strings
     """
     text = only_dots(text)
@@ -57,7 +57,7 @@ def remove_digits(text: str) -> str:
 PUNCT = "\"#$%&'()*+,-/:<=>@[\\]^_`{|}~"
 
 
-def remove_punctuation(text: str) -> str:
+def remove_punctuation(text: str, keep_sentences: bool) -> str:
     """
     Replaces all punctuation from the text with spaces
     except for dots, exclamation marks and question marks.
@@ -66,16 +66,23 @@ def remove_punctuation(text: str) -> str:
     ----------
     text: str
         Text to alter
+    keep_sentences: bool
+        Specifies whether the normalization should keep sentence borders or not
+        (exclamation marks, dots, question marks)
 
     Returns
     ----------
     text: str
         New string without punctuation
     """
-    return text.translate(str.maketrans(PUNCT, " " * len(PUNCT)))
+    if keep_sentences:
+        punctuation = PUNCT
+    else:
+        punctuation = string.punctuation
+    return text.translate(str.maketrans(punctuation, " " * len(punctuation)))
 
 
-def normalize(text: str) -> str:
+def normalize(text: str, keep_sentences: bool) -> str:
     """
     Removes digits and punctuation from the text supplied.
 
@@ -83,6 +90,9 @@ def normalize(text: str) -> str:
     ----------
     text: str
         Text to alter
+    keep_sentences: bool
+        Specifies whether the normalization should keep sentence borders or not
+        (exclamation marks, dots, question marks)
 
     Returns
     ----------
@@ -90,7 +100,7 @@ def normalize(text: str) -> str:
         New normalized string
     """
     text = remove_digits(text)
-    text = remove_punctuation(text)
+    text = remove_punctuation(text, keep_sentences=keep_sentences)
     return text
 
 
@@ -105,7 +115,7 @@ def tokenize(text: str) -> List[str]:
 
     Returns
     ----------
-    tokens: List[str]
+    tokens: list of str
         List of tokens
     """
     return text.lower().split()
@@ -122,7 +132,27 @@ def sentences(text: str) -> List[List[str]]:
 
     Returns
     ----------
-    sentences: List[List[str]]
+    sentences: list of list of str
         List of sentences in the form of list of tokens.
     """
-    return [tokenize(sentence) for sentence in sentencize(normalize(text))]
+    norm_text = normalize(text, keep_sentences=True)
+    sentences = sentencize(norm_text)
+    return [tokenize(sentence) for sentence in sentences]
+
+
+def normalized_document(text: str) -> List[str]:
+    """
+    Normalizes text, then tokenizes it.
+
+    Parameters
+    ----------
+    text: str
+        Text to sentencize
+
+    Returns
+    ----------
+    tokens: list of str
+        List of tokens in the text.
+    """
+    norm_text = normalize(text, keep_sentences=False)
+    return tokenize(norm_text)

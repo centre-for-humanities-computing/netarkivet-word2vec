@@ -1,6 +1,7 @@
 gensim
 wandb
 scipy
+pandas
 
 # style
 black
