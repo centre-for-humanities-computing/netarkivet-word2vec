@@ -2,7 +2,6 @@ gensim
 wandb
 scipy
 pandas
-tokenizers
 
 # style
 black
