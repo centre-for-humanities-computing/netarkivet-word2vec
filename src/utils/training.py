@@ -61,6 +61,7 @@ def train(
     save: bool = True,
     sentence_workers: int = 6,
     verbose: bool = False,
+    filter_porn: bool = True,
 ) -> None:
     """
     Trains word2vec model on all texts under the supplied data_path
@@ -90,9 +91,12 @@ def train(
         The amount of workers the sentence stream should use
     verbose: bool, default False
         Specifies whether the training sequence should be logged to stdout
+    filter_porn: bool, default True
+        Specifies whether suspected porn domains should be left
+        out of the stream.
     """
     text_chunks = chunk(
-        stream_cleaned_texts(data_path, non_duplicates_path, verbose),
+        stream_cleaned_texts(data_path, non_duplicates_path, filter_porn),
         chunk_size=text_chunksize,
         sample_size=text_sampling_size,
     )

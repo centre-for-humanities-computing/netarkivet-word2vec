@@ -1,12 +1,13 @@
 import json
 import multiprocessing
 import os
+import pickle
 import random
 import re
 from itertools import islice, zip_longest
 from typing import Callable, Iterable, List, Optional, Set, TypeVar
-import numpy as np
 
+import numpy as np
 import pandas as pd
 
 import utils.text
@@ -162,7 +163,9 @@ def get_years(data_path: str = ".") -> List[str]:
     return years
 
 
-def stream_by_text_id(file_path: str, text_ids: Set) -> Iterable[str]:
+def stream_by_text_id(
+    file_path: str, text_ids: Set[int], porn_domains: Optional[Set[str]] = None
+) -> Iterable[str]:
     """
     Streams all texts from a jsonl file that are in the set of text_ids supplied.
 
@@ -170,6 +173,10 @@ def stream_by_text_id(file_path: str, text_ids: Set) -> Iterable[str]:
     ----------
     file_path: str
         Path to the jsonl file in question
+    text_ids: set of integer
+        The ids to stream from the file.
+    porn_domains: set of str or None, default None
+        If provided, these domains will not be streamed.
 
     Yields
     ----------
@@ -183,13 +190,23 @@ def stream_by_text_id(file_path: str, text_ids: Set) -> Iterable[str]:
                 # parsing the record
                 record = json.loads(line)
                 # If passes quality filters, it yields the content of the record
-                if record["passed_quality_filter"] and record["language"] == "da":
+                record_okay = (
+                    record["passed_quality_filter"] and record["language"] == "da"
+                )
+                if porn_domains is not None:
+                    record_okay = (
+                        record_okay and record["domain_key"] not in porn_domains
+                    )
+                if record_okay:
                     yield record["text"]
 
 
 @reusable
 def stream_year(
-    data_path: str, non_duplicates_path: str, year: str, verbose: bool = True
+    data_path: str,
+    non_duplicates_path: str,
+    year: str,
+    porn_domains: Optional[Set[str]] = None,
 ) -> Iterable[str]:
     """
     Streams all texts from a given year.
@@ -202,8 +219,8 @@ def stream_year(
         Path, where non duplicate id numpy files are
     year: str
         The year from which texts should be streamed.
-    verbose: bool, default True
-        Specifies whether the stream should print which text is being processed.
+    porn_domains: set of str or None, default None
+        If provided, these domains will not be streamed.
 
     Yields
     ----------
@@ -218,13 +235,35 @@ def stream_year(
                 for text in stream_by_text_id(
                     os.path.join(data_path, f"{year}/{file_id}.jsonl"),
                     text_ids=text_ids,
+                    porn_domains=porn_domains,
                 ):
                     yield text
 
 
+def get_porn_domains(data_path: str) -> Set[str]:
+    """
+    Gives all domains that are suspected to be porn in the dataset.
+
+    Parameters
+    ----------
+    data_path: str
+        Path to the dataset
+
+    Returns
+    ----------
+    unsafe_sites: set of str
+        Set of unsafe sites (double checked)
+    """
+    file_path = os.path.join(data_path, "safe_search_domains_safe.pkl")
+    with open(file_path, "rb") as f:
+        safe_domains_dict = pickle.load(f)
+    unsafe_double_checked = safe_domains_dict["unsafe_sites_double_checked"]
+    return set(unsafe_double_checked)
+
+
 @reusable
 def stream_cleaned_texts(
-    data_path: str, non_duplicates_path: str, verbose=True
+    data_path: str, non_duplicates_path: str, filter_porn=True
 ) -> Iterable[str]:
     """
     Generator yielding all cleaned texts, that are not duplicates :)
@@ -235,16 +274,25 @@ def stream_cleaned_texts(
         Specifies where our data lives, where to get file contents from.
     non_duplicates_path: str
         Path, where non duplicate id numpy files are
+    filter_porn: bool, default True
+        Specifies whether suspected porn domains should be left
+        out of the stream.
+
     Yields
     ----------
     text: str
         Cleaned text
     """
+    # In case we want to filter out porn, we load the set of unsafe sites from disk
+    if filter_porn:
+        porn_domains = get_porn_domains(data_path=data_path)
+    else:
+        porn_domains = None
     # List of all years
     years = get_years(data_path=data_path)
     # Collects streams of all years into a list
     year_streams = [
-        stream_year(data_path, non_duplicates_path, year, verbose=verbose)
+        stream_year(data_path, non_duplicates_path, year, porn_domains=porn_domains)
         for year in years
     ]
     # Streams texts from all years at the same time, so that the data is more shuffled

@@ -115,6 +115,7 @@ def main() -> None:
         data_path=args.data_path,
         save_path=args.save_path,
         non_duplicates_path=args.non_duplicates_path,
+        filter_porn=True,
         log=True,
         save=True,
         text_chunksize=args.text_chunksize,

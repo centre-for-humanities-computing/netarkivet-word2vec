@@ -1,5 +1,9 @@
+import re
 import string
 from typing import List
+
+from tokenizers import normalizers
+from tokenizers.normalizers import NFD, Lowercase, StripAccents
 
 
 def only_dots(text: str) -> str:
@@ -82,6 +86,9 @@ def remove_punctuation(text: str, keep_sentences: bool) -> str:
     return text.translate(str.maketrans(punctuation, " " * len(punctuation)))
 
 
+danish_characters = string.printable + "åæøÅÆØéáÁÈ"
+
+
 def normalize(text: str, keep_sentences: bool) -> str:
     """
     Removes digits and punctuation from the text supplied.
@@ -101,6 +108,11 @@ def normalize(text: str, keep_sentences: bool) -> str:
     """
     text = remove_digits(text)
     text = remove_punctuation(text, keep_sentences=keep_sentences)
+    text = text.lower()
+    non_danish = re.compile(f"[^{danish_characters}]")
+    text = re.sub(non_danish, "", text)
+    table = str.maketrans({"æ": "ae", "ø": "oe", "å": "aa", "é": "e'", "á": "a'"})
+    text = text.translate(table)
     return text
 
 
@@ -118,7 +130,7 @@ def tokenize(text: str) -> List[str]:
     tokens: list of str
         List of tokens
     """
-    return text.lower().split()
+    return text.split()
 
 
 def sentences(text: str) -> List[List[str]]:
