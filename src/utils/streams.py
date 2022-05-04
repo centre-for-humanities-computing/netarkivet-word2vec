@@ -194,8 +194,8 @@ def stream_by_text_id(
                     record["passed_quality_filter"] and record["language"] == "da"
                 )
                 if porn_domains is not None:
-                    record_okay = (
-                        record_okay and record["domain_key"] not in porn_domains
+                    record_okay = record_okay and (
+                        record["domain_key"] not in porn_domains
                     )
                 if record_okay:
                     yield record["text"]

@@ -4,6 +4,8 @@ import pandas as pd
 from gensim.models import Word2Vec
 from scipy.stats import spearmanr
 
+from utils.text import normalize
+
 odd_df = pd.read_csv("../evaluation/odd_one_out.csv")
 odd_one_out = odd_df.to_numpy().tolist()
 
@@ -47,6 +49,7 @@ def accuracy_odd_one_out(model: Word2Vec) -> float:
     accurate = 0
     for words in odd_one_out:
         words = words[1:]
+        words = [normalize(word, keep_sentences=False) for word in words]
         if all(word in model.wv.key_to_index for word in words):
             if model.wv.doesnt_match(words) == words[3]:
                 accurate += 1
@@ -55,6 +58,10 @@ def accuracy_odd_one_out(model: Word2Vec) -> float:
 
 
 similarity_df = pd.read_csv("../evaluation/similarity.csv")
+similarity_df = similarity_df.assign(
+    word1=similarity_df["word1"].map(lambda s: normalize(s, keep_sentences=False)),
+    word2=similarity_df["word2"].map(lambda s: normalize(s, keep_sentences=False)),
+)
 
 
 def similarity(
