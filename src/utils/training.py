@@ -1,4 +1,5 @@
-from typing import Callable, Iterable, List, Optional, TypeVar, Union
+""" Module with utilities for training language embedding models """
+from typing import Callable, Iterable, List, Optional, Union
 from gensim.models import Doc2Vec, Word2Vec
 from gensim.models.doc2vec import TaggedDocument
 

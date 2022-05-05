@@ -1,3 +1,4 @@
+""" Module containing several useful streaming tools, both general and project related. """
 import json
 import multiprocessing
 import os
@@ -8,7 +9,6 @@ from itertools import islice, zip_longest
 from typing import Callable, Iterable, List, Optional, Set, TypeVar
 
 import numpy as np
-import pandas as pd
 from gensim.models.doc2vec import TaggedDocument
 
 import utils.text
@@ -231,11 +231,18 @@ def stream_year(
     text: str
         Text content from the given year.
     """
+    # Goes through all files in non_duplicates_path
     for root, _, files in os.walk(os.path.join(non_duplicates_path, year)):
         for mask_file in files:
             if mask_file.endswith(".npy"):
+                # If the file is a numpy array
                 file_id = mask_file.split(".")[0]
+                # The load it and then turn it into a set, so that it has O(1)
+                # access time, probably should have used a boolean array though
+                # so I wouldn't have to deal with this mess, and you would not have to look
+                # at this lovely piece of spaghetti code :))
                 text_ids = set(np.load(os.path.join(root, mask_file)))
+                # Streams all texts from a certain data file, that are in text_ids
                 for text in stream_by_text_id(
                     os.path.join(data_path, f"{year}/{file_id}.jsonl"),
                     text_ids=text_ids,
@@ -258,10 +265,24 @@ def get_porn_domains(data_path: str) -> Set[str]:
     unsafe_sites: set of str
         Set of unsafe sites (double checked)
     """
+    # Soo we got this pickle file containing a dict of some random stuff
     file_path = os.path.join(data_path, "safe_search_domains_safe.pkl")
     with open(file_path, "rb") as f:
+        # And then we load it
         safe_domains_dict = pickle.load(f)
+    # This is it's rough structure:
+    # {
+    #    'cleanweb': dict[str, bool]
+    #       contains whether a certain website is clean or not
+    #    'google public DNS': dict[str, bool]
+    #    'unsafe_sites': list[str]
+    #       Compares cleanweb to public DNS, but lot of false positives
+    #    'unsafe_sites_double_checked': list[str]
+    #       Same thing with higher tolerance
+    # }
     unsafe_double_checked = safe_domains_dict["unsafe_sites_double_checked"]
+    # We turn this to a set, cause I love them unreasonably much,
+    # but then yeah O(1) access time and stuff
     return set(unsafe_double_checked)
 
 
@@ -321,14 +342,14 @@ def reservoir_sample(stream: Iterable[T], sample_size: int) -> List[T]:
 
     Parameters
     ----------
-    stream: Iterable[T]
+    stream: Iterable of T
         The stream to sample from.
     sample_size: int
         Number of items to sample.
 
     Returns
     ----------
-    reservoir: List[T]
+    reservoir: list of T
         Random sample from the stream.
     """
     reservoir = []
@@ -372,6 +393,8 @@ def document_stream(
             utils.text.normalized_document, texts, chunksize=chunksize
         )
         for i, doc in enumerate(docs):
+            # For some reason the Gensim gods demand that we do this
+            # I don't really get it, but you can't just supply list of strings
             yield TaggedDocument(doc, [i])
 
 
@@ -402,11 +425,12 @@ def sentence_stream(
         List of words in a sentence
     """
     with multiprocessing.Pool(processes=workers) as pool:
-        docs = pool.imap_unordered(utils.text.sentences, texts, chunksize=chunksize)
+        docs = pool.imap_unordered(utils.text.sentencize, texts, chunksize=chunksize)
         # We use imap_unordered, as the order of the sentences does not matter for training
         # Word2Vec, in fact it's better if they are shuffled
         # This stream is going to be chunked and sampled anyway
         for doc in docs:
             for sentence in doc:
+                # Only return a sentence if it's long enough
                 if len(sentence) >= window_size:
                     yield sentence

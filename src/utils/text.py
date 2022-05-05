@@ -1,9 +1,7 @@
+""" Utility functions related to text manipulation such as normalization, tokenization sentencization """
 import re
 import string
 from typing import List
-
-from tokenizers import normalizers
-from tokenizers.normalizers import NFD, Lowercase, StripAccents
 
 
 def only_dots(text: str) -> str:
@@ -21,24 +19,6 @@ def only_dots(text: str) -> str:
         New string containing only dots
     """
     return text.translate(str.maketrans({"?": ".", "!": ".", ";": "."}))
-
-
-def sentencize(text: str) -> List[str]:
-    """
-    Sentencizes text
-
-    Parameters
-    ----------
-    text: str
-        Text to sentencize
-
-    Returns
-    ----------
-    sentences: list of str
-        List of sentence strings
-    """
-    text = only_dots(text)
-    return text.split(".")
 
 
 def remove_digits(text: str) -> str:
@@ -86,7 +66,7 @@ def remove_punctuation(text: str, keep_sentences: bool) -> str:
     return text.translate(str.maketrans(punctuation, " " * len(punctuation)))
 
 
-danish_characters = string.printable + "åæøÅÆØéáÁÈ"
+DANISH_CHARACTERS = string.printable + "åæøÅÆØéáÁÈ"
 
 
 def normalize(text: str, keep_sentences: bool) -> str:
@@ -109,8 +89,10 @@ def normalize(text: str, keep_sentences: bool) -> str:
     text = remove_digits(text)
     text = remove_punctuation(text, keep_sentences=keep_sentences)
     text = text.lower()
-    non_danish = re.compile(f"[^{danish_characters}]")
+    # Removing non Danish characters
+    non_danish = re.compile(f"[^{DANISH_CHARACTERS}]")
     text = re.sub(non_danish, "", text)
+    # Strips accents
     table = str.maketrans({"é": "e'", "á": "a'"})
     text = text.translate(table)
     return text
@@ -133,7 +115,7 @@ def tokenize(text: str) -> List[str]:
     return text.split()
 
 
-def sentences(text: str) -> List[List[str]]:
+def sentencize(text: str) -> List[List[str]]:
     """
     Cleans up the text, sentencizes and tokenizes it.
 
@@ -148,7 +130,7 @@ def sentences(text: str) -> List[List[str]]:
         List of sentences in the form of list of tokens.
     """
     norm_text = normalize(text, keep_sentences=True)
-    sentences = sentencize(norm_text)
+    sentences = only_dots(norm_text).split(".")
     return [tokenize(sentence) for sentence in sentences]
 
 

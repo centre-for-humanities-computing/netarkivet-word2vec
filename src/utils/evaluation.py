@@ -1,4 +1,5 @@
-from typing import Iterable, Tuple
+""" Utility functions for objectively assessing the performance of language embedding models """
+from typing import Dict, Iterable, Tuple
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
@@ -16,7 +17,7 @@ def is_in_vocab(words: Iterable[str], model: Word2Vec) -> np.ndarray:
 
     Parameters
     ----------
-    words: Iterable[str]
+    words: Iterable of str
         The words which should be checked
     model: Word2Vec
         Word2Vec model conatining the vocab
@@ -57,6 +58,7 @@ def accuracy_odd_one_out(model: Word2Vec) -> float:
     return accuracy
 
 
+# Load similarity table to a DatFrame
 similarity_df = pd.read_csv("../evaluation/similarity.csv")
 similarity_df = similarity_df.assign(
     word1=similarity_df["word1"].map(lambda s: normalize(s, keep_sentences=False)),
@@ -112,12 +114,12 @@ def accuracy_similarities(model: Word2Vec) -> Tuple[float, float]:
     df = df[is_in_vocab(df["word1"], model) & is_in_vocab(df["word2"], model)]
     human_scores = df["similarity"]
     machine_scores = similarity(df["word1"], df["word2"], model)
-    rho, p = spearmanr(human_scores, machine_scores)
+    rho, _ = spearmanr(human_scores, machine_scores)
     vocab_coverage = len(df) / len(similarity_df)
     return rho, vocab_coverage
 
 
-def evaluate_word2vec(model: Word2Vec) -> dict:
+def evaluate_word2vec(model: Word2Vec) -> Dict[str, float]:
     """
     Evaluates the model on different metrics.
 
