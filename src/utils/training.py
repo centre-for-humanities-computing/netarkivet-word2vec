@@ -1,135 +1,61 @@
-import warnings
-from typing import Optional
+from typing import Callable, Iterable, List, Optional, TypeVar, Union
+from gensim.models import Doc2Vec, Word2Vec
+from gensim.models.doc2vec import TaggedDocument
 
-import wandb
-from gensim.models import Word2Vec
-
-from utils.evaluation import accuracy_odd_one_out, accuracy_similarities
-from utils.streams import chunk, sentence_stream, stream_cleaned_texts
-
-
-def initialise(
-    save_path: Optional[str] = ".", init_wandb: bool = True, **hyperparameters
-) -> Word2Vec:
-    """
-    If a word2vec model has previously been saved to save_path,
-    it loads the model.
-    Otherwise initialises a new model with the provided hyperparameters.
-    If init_wandb is set to True it also initialises a run at Weights and Biases.
-
-    Parameters
-    ----------
-    save_path: str or None, default None
-        Path where the model has been previously saved.
-        If not specified the model won't  be loaded but freshly
-        created instead.
-    init_wandb: bool, default True
-        Specifies whether a Wandb run should be initialised.
-    **hyperparameters:
-        Set of hyperparameters to initialise the model with if it's not loaded
-
-    Returns
-    ----------
-    model: Word2Vec
-        Initialised model
-    """
-    model = Word2Vec(compute_loss=True, **hyperparameters)
-    if save_path is not None:
-        try:
-            model = Word2Vec.load(f"{save_path}/word2vec.model")
-            print("Loading model from save path")
-        except FileNotFoundError:
-            warnings.warn(
-                f"Model not found in the directory: {save_path}, creating model",
-                RuntimeWarning,
-            )
-    if init_wandb:
-        wandb.init(project="netarkivet-wod-embeddings", entity="kardosdrur")
-        wandb.config = hyperparameters
-    return model
+# A Corpus is an iterable of sentences for Word2Vec and
+# an iterable of TaggedDocuments for Doc2Vec
+Corpus = Union[Iterable[List[str]], Iterable[TaggedDocument]]
 
 
 def train(
-    model: Word2Vec,
-    data_path: str,
-    save_path: str,
-    non_duplicates_path: str,
-    text_chunksize: int = 100_000,
-    text_sampling_size: int = 150_000,
-    window_size: int = 5,
-    log: bool = True,
-    save: bool = True,
-    sentence_workers: int = 6,
-    verbose: bool = False,
-    filter_porn: bool = True,
-) -> None:
+    model: Union[Word2Vec, Doc2Vec],
+    text_chunks: Iterable[List[str]],
+    preprocessing: Callable[[Iterable[str]], Corpus],
+    save_path: Optional[str] = None,
+) -> Iterable[float]:
     """
-    Trains word2vec model on all texts under the supplied data_path
+    Trains word2vec or doc2vec model sequentially on the supplied chunks.
 
     Parameters
     ----------
-    model: Word2Vec
+    model: Word2Vec or Doc2Vec
         The model object to train
-    data_path: str
-        Path to load the data from
-    save_path: str
-        Path to save the model to after each epoch
-    non_duplicates_path: str
-        Path to non duplicate id numpy files
-    text_chunksize: int, default 100_000
-        Amount of texts that should be processed in one epoch
-    text_sampling_size: int, default 150_000
-        Amount of samples that should be randomly sampled from the chunks
-        before they get fed to the model
-    window_size: int, default 5
-        Window size of the Word2Vec model
-    log: bool, defualt True
-        Specifies whether the training sequence should be logged to Wandb
-    save: bool, default True
-        Specifies whether the model should be saved after each epoch
-    sentence_workers: int, default 6
-        The amount of workers the sentence stream should use
-    verbose: bool, default False
-        Specifies whether the training sequence should be logged to stdout
-    filter_porn: bool, default True
-        Specifies whether suspected porn domains should be left
-        out of the stream.
+    text_chunks: Iterable of list of str
+        The text chunks to train the model on
+    preprocessing: function, iterable of str -> Corpus
+        Function that turns a chunk of texts into an iterable
+        corpus for the Word2Vec/Doc2Vec model.
+    save_path: str or None, default None
+        Path to save the model to, if not specified,
+        the model will not be saved after each chunk.
+
+    Yields
+    ----------
+    loss: float
+        Loss of the model after each chunk
     """
-    text_chunks = chunk(
-        stream_cleaned_texts(data_path, non_duplicates_path, filter_porn),
-        chunk_size=text_chunksize,
-        sample_size=text_sampling_size,
-    )
+    # Check how much the model has already gone through
     prev_corpus_count = model.corpus_count
     for texts in text_chunks:
+        # If the model hasn't gone through anything yet, it has to be updated
+        # This flag indicates that
         update = prev_corpus_count != 0
-        sentences = sentence_stream(
-            texts, window_size=window_size, workers=sentence_workers
-        )
-        model.build_vocab(corpus_iterable=sentences, update=update)
-        sentences = sentence_stream(
-            texts, window_size=window_size, workers=sentence_workers
-        )
+        # Preprocess corpus for feeding them to the model
+        corpus = preprocessing(texts)
+        # Collect vocabulary from the chunk before training
+        model.build_vocab(corpus, update=update)
+        corpus = preprocessing(texts)
+        # The actual training :=)
         model.train(
-            corpus_iterable=sentences,
+            corpus,
             total_examples=model.corpus_count + prev_corpus_count,  # type: ignore
             epochs=1,
             compute_loss=True,
         )
         loss = model.get_latest_training_loss()
-        if save:
+        # Saves model if save_path is specified
+        if save_path is not None:
             model.save(f"{save_path}/word2vec.model")
-        odd = accuracy_odd_one_out(model)
-        rho, vocab_coverage = accuracy_similarities(model)
-        if log:
-            wandb.log(
-                {
-                    "Accuracy - Odd one out": odd,
-                    "Similarities Sperman's ρ": rho,
-                    "Similarities vocabulary coverage": vocab_coverage,
-                    "Loss": loss,
-                }
-            )
-        if verbose:
-            print(f"acc_odd: {odd}, sim_rho: {odd}, loss: {loss}")
+        # Updates corpus count
         prev_corpus_count = model.corpus_count + prev_corpus_count  # type: ignore
+        yield loss

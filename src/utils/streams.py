@@ -9,6 +9,7 @@ from typing import Callable, Iterable, List, Optional, Set, TypeVar
 
 import numpy as np
 import pandas as pd
+from gensim.models.doc2vec import TaggedDocument
 
 import utils.text
 
@@ -43,16 +44,19 @@ def reusable(gen_func: Callable) -> Callable:
     return _multigen
 
 
+T = TypeVar("T")
+
+
 @reusable
 def chunk(
-    iterable: Iterable, chunk_size: int, sample_size: Optional[int] = None
-) -> Iterable[List]:
+    iterable: Iterable[T], chunk_size: int, sample_size: Optional[int] = None
+) -> Iterable[List[T]]:
     """
     Generator function that chunks an iterable for you.
 
     Parameters
     ----------
-    iterable: Iterable[T]
+    iterable: Iterable of T
         The iterable you'd like to chunk.
     chunk_size: int
         The size of chunks you would like to get back
@@ -62,7 +66,7 @@ def chunk(
 
     Yields
     ----------
-    buffer: List[T]
+    buffer: list of T
         sample_size or chunk_size sized lists chunked from the original iterable
     """
     buffer = []
@@ -341,7 +345,7 @@ def reservoir_sample(stream: Iterable[T], sample_size: int) -> List[T]:
 @reusable
 def document_stream(
     texts: Iterable[str], chunksize: int = 2000, workers: int = 6
-) -> Iterable[List[str]]:
+) -> Iterable[TaggedDocument]:
     """
     Streams documents from the given text stream.
 
@@ -352,8 +356,13 @@ def document_stream(
     chunksize: int, default 2000
         Size of text chunks the stream should process in parallel
     workers: int, default 6
-        Number of workers the stream should use to sentencize
+        Number of workers the stream should use to normalize
         the texts coming from the stream
+
+    Yields
+    ----------
+    doc: TaggedDocument
+        Tagged document that can be used by Doc2Vec
     """
     with multiprocessing.Pool(processes=workers) as pool:
         # We use imap_unordered, as the order of the documents does not matter for training
@@ -362,8 +371,8 @@ def document_stream(
         docs = pool.imap_unordered(
             utils.text.normalized_document, texts, chunksize=chunksize
         )
-        for doc in docs:
-            yield doc
+        for i, doc in enumerate(docs):
+            yield TaggedDocument(doc, [i])
 
 
 @reusable

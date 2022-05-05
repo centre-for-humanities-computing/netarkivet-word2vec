@@ -1,6 +1,12 @@
 import argparse
+import os
+import warnings
+import wandb
+from gensim.models import Doc2Vec, Word2Vec
 
-from utils.training import initialise, train
+from utils.evaluation import evaluate_word2vec
+from utils.streams import chunk, document_stream, sentence_stream, stream_cleaned_texts
+from utils.training import train
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -14,6 +20,15 @@ def create_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "model",
+        dest="model_name",
+        nargs="?",
+        default="word2vec",
+        type=str,
+        help="Specifies which model should be trained on the corpus"
+        + "(options: {'word2vec', 'doc2vec'} optional,default=word2vec)",
+    )
+    parser.add_argument(
         "--data_path",
         dest="data_path",
         required=True,
@@ -26,7 +41,7 @@ def create_parser() -> argparse.ArgumentParser:
         required=True,
         type=str,
         help="Path, where the model is going to be saved and where the model is "
-        + "initialised from (if load is True)",
+        + "initialised from",
     )
     parser.add_argument(
         "--non_duplicates_path",
@@ -36,12 +51,12 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path, where non_duplicate id numpy files are stored",
     )
     parser.add_argument(
-        "--sentence_workers",
-        dest="sentence_workers",
+        "--preprocessing_workers",
+        dest="preprocessing_workers",
         required=False,
         default=6,
         type=int,
-        help="Number of processes assigned to yield sentences from the files (optional,"
+        help="Number of processes assigned to preprocess strings for training (optional,"
         + "default=6)",
     )
     parser.add_argument(
@@ -69,15 +84,6 @@ def create_parser() -> argparse.ArgumentParser:
         help="Dimensionality of the desired word vectors (optional,default=100)",
     )
     parser.add_argument(
-        "--load",
-        dest="load",
-        required=False,
-        default=True,
-        type=bool,
-        help="Specifies whether to load the already existent model from save_path as an"
-        + " initialization step or not (optional, default=True)",
-    )
-    parser.add_argument(
         "--text_chunksize",
         dest="text_chunksize",
         required=False,
@@ -102,27 +108,85 @@ def main() -> None:
     parser = create_parser()
     args = parser.parse_args()
     print("Initialising model")
-    model = initialise(
-        save_path=args.save_path if args.load else None,
-        init_wandb=True,
-        vector_size=args.vector_size,
-        window_size=args.window_size,
-        workers=args.training_workers,
+    # Creating a dict for the hyperparameters, so that they are easier to log to Wandb
+    # and it's easier to instantiate a model
+    hyperparameters = {
+        "vector_size": args.vector_size,
+        "window": args.window_size,
+        "workers": args.training_workers,
+    }
+    # Check whether we want to train a word2vec or a doc2vec
+    if args.model_name == "word2vec":
+        evaluate = evaluate_word2vec
+        model_class = Word2Vec
+        # If we want to train word2vec, we turn the stream of texts into a sentence stream
+        preprocess = lambda texts: sentence_stream(
+            texts, window_size=args.window_size, workers=args.preprocessing_workers
+        )
+        wandb_project = "netarkivet-wod-embeddings"
+    else:
+        # Since we don't have any other evaluation metrics for doc2vec than
+        # loss, it gives back an empty dict which can be then expanded
+        evaluate = lambda _: {}
+        model_class = Doc2Vec
+        # If we want to train doc2vec, we turn the stream of texts into a stream of TaggedDocuments
+        preprocess = lambda texts: document_stream(
+            texts, workers=args.preprocessing_workers
+        )
+        wandb_project = "netarkivet-doc-embeddings"
+    # ----Initializing the model----
+    try:
+        # We try to load the specified model
+        model = model_class.load(
+            os.path.join(args.save_path, f"{args.model_name}.model")
+        )
+        print("Loading model from save path")
+    except FileNotFoundError:
+        # If loading fails, we throw a warning to the user, and initiate the model
+        # with the given hyperparameters
+        warnings.warn(
+            f"Model not found in the directory: {args.save_path}, creating model",
+            RuntimeWarning,
+        )
+        model = model_class(compute_loss=True, **hyperparameters)
+
+    # ----Initializing logging----
+    try:
+        # We try to log to wandb
+        wandb.init(project=wandb_project, entity="kardosdrur")
+        wandb.config = hyperparameters
+        log = "wandb"
+    except Exception:
+        # If we don't succeed, we log to stdout instead and warn the user
+        warnings.warn(
+            "Weights and biases could not be initialised, logging to stdout",
+            RuntimeWarning,
+        )
+        log = "stdout"
+
+    # ----Creating text chunk stream----
+    text_chunks = chunk(
+        stream_cleaned_texts(
+            args.data_path, args.non_duplicates_path, args.filter_porn
+        ),
+        chunk_size=args.text_chunksize,
+        sample_size=args.text_sampling_size,
     )
+
     print("Training sequence started")
-    train(
-        model,
-        data_path=args.data_path,
+    # ----Start training----
+    for loss in train(
+        model=model,
+        text_chunks=text_chunks,
+        preprocessing=preprocess,
         save_path=args.save_path,
-        non_duplicates_path=args.non_duplicates_path,
-        filter_porn=True,
-        log=True,
-        save=True,
-        text_chunksize=args.text_chunksize,
-        text_sampling_size=args.text_samplesize,
-        window_size=args.window_size,
-        sentence_workers=args.sentence_workers,
-    )
+    ):
+        # For each chunk we log the evaluation results
+        logging_info = {**evaluate(model), "Loss": loss}
+        if log == "wandb":
+            wandb.log(logging_info)
+        else:
+            print(logging_info)
     print("Training terminated")
 
 

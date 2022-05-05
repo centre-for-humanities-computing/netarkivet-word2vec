@@ -115,3 +115,28 @@ def accuracy_similarities(model: Word2Vec) -> Tuple[float, float]:
     rho, p = spearmanr(human_scores, machine_scores)
     vocab_coverage = len(df) / len(similarity_df)
     return rho, vocab_coverage
+
+
+def evaluate_word2vec(model: Word2Vec) -> dict:
+    """
+    Evaluates the model on different metrics.
+
+    Parameters
+    ----------
+    model: Word2Vec
+        Word2Vec model to test
+
+    Returns
+    ----------
+    evaluation_metrics: dict
+        A dictionary containing score on the odd-one-out test,
+        spearman's rho in the similarity test and
+        vocab coverage on the similarities test.
+    """
+    odd = accuracy_odd_one_out(model)
+    rho, vocab_coverage = accuracy_similarities(model)
+    return {
+        "Accuracy - Odd one out": odd,
+        "Similarities Sperman's ρ": rho,
+        "Similarities vocabulary coverage": vocab_coverage,
+    }
