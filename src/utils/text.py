@@ -111,7 +111,7 @@ def normalize(text: str, keep_sentences: bool) -> str:
     text = text.lower()
     non_danish = re.compile(f"[^{danish_characters}]")
     text = re.sub(non_danish, "", text)
-    table = str.maketrans({"æ": "ae", "ø": "oe", "å": "aa", "é": "e'", "á": "a'"})
+    table = str.maketrans({"é": "e'", "á": "a'"})
     text = text.translate(table)
     return text
 
