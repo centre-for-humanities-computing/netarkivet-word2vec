@@ -56,7 +56,7 @@ def train(
         loss = model.get_latest_training_loss()
         # Saves model if save_path is specified
         if save_path is not None:
-            model.save(f"{save_path}/word2vec.model")
+            model.save(save_path)
         # Updates corpus count
         prev_corpus_count = model.corpus_count + prev_corpus_count  # type: ignore
         yield loss

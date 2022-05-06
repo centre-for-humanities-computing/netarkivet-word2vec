@@ -21,7 +21,6 @@ def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "model",
-        dest="model_name",
         nargs="?",
         default="word2vec",
         type=str,
@@ -116,7 +115,7 @@ def main() -> None:
         "workers": args.training_workers,
     }
     # Check whether we want to train a word2vec or a doc2vec
-    if args.model_name == "word2vec":
+    if args.model == "word2vec":
         evaluate = evaluate_word2vec
         model_class = Word2Vec
         # If we want to train word2vec, we turn the stream of texts into a sentence stream
@@ -137,9 +136,7 @@ def main() -> None:
     # ----Initializing the model----
     try:
         # We try to load the specified model
-        model = model_class.load(
-            os.path.join(args.save_path, f"{args.model_name}.model")
-        )
+        model = model_class.load(os.path.join(args.save_path, f"{args.model}.model"))
         print("Loading model from save path")
     except FileNotFoundError:
         # If loading fails, we throw a warning to the user, and initiate the model
@@ -170,7 +167,7 @@ def main() -> None:
             args.data_path, args.non_duplicates_path, args.filter_porn
         ),
         chunk_size=args.text_chunksize,
-        sample_size=args.text_sampling_size,
+        sample_size=args.text_samplesize,
     )
 
     print("Training sequence started")
@@ -179,7 +176,7 @@ def main() -> None:
         model=model,
         text_chunks=text_chunks,
         preprocessing=preprocess,
-        save_path=args.save_path,
+        save_path=os.path.join(args.save_path, f"{args.model}.model"),
     ):
         # For each chunk we log the evaluation results
         logging_info = {**evaluate(model), "Loss": loss}
