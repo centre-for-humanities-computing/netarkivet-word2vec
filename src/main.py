@@ -122,7 +122,8 @@ def main() -> None:
         preprocess = lambda texts: sentence_stream(
             texts, window_size=args.window_size, workers=args.preprocessing_workers
         )
-        wandb_project = "netarkivet-wod-embeddings"
+        wandb.config = hyperparameters
+        wandb_project = "netarkivet-word2vec"
     else:
         # Since we don't have any other evaluation metrics for doc2vec than
         # loss, it gives back an empty dict which can be then expanded
@@ -185,6 +186,8 @@ def main() -> None:
         else:
             print(logging_info)
     print("Training terminated")
+    if log == "wandb":
+        wandb.alert(title="Training terminated", text="")
 
 
 if __name__ == "__main__":
