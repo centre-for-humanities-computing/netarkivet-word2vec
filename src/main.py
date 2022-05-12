@@ -100,6 +100,15 @@ def create_parser() -> argparse.ArgumentParser:
         help="Size sample that has to be drawn randomly from each chunk (optional, "
         + "default=150_000)",
     )
+    parser.add_argument(
+        "--filter_porn",
+        dest="filter_porn",
+        required=False,
+        default=True,
+        type=bool,
+        help="Specifies whether porn should be filtered from the dataset. (optional, "
+        + "default=True)",
+    )
     return parser
 
 
@@ -133,7 +142,7 @@ def main() -> None:
         preprocess = lambda texts: document_stream(
             texts, workers=args.preprocessing_workers
         )
-        wandb_project = "netarkivet-doc-embeddings"
+        wandb_project = "netarkivet-doc2vec"
     # ----Initializing the model----
     try:
         # We try to load the specified model
@@ -151,7 +160,7 @@ def main() -> None:
     # ----Initializing logging----
     try:
         # We try to log to wandb
-        wandb.init(project=wandb_project, entity="kardosdrur")
+        wandb.init(project=wandb_project, entity="chcaa")
         wandb.config = hyperparameters
         log = "wandb"
     except Exception:

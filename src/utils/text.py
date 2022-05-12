@@ -91,10 +91,10 @@ def normalize(text: str, keep_sentences: bool) -> str:
     text = text.lower()
     # Removing non Danish characters
     non_danish = re.compile(f"[^{DANISH_CHARACTERS}]")
-    text = re.sub(non_danish, "", text)
+    text = re.sub(non_danish, " ", text)
     # Strips accents
-    table = str.maketrans({"é": "e'", "á": "a'"})
-    text = text.translate(table)
+    #table = str.maketrans({"é": "e'", "á": "a'"})
+    #text = text.translate(table)
     return text
 
 
