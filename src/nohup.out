@@ -1,188 +1,0 @@
-Initialising model
-Traceback (most recent call last):
-  File "/work/src_word2vec/netarkivet-word2vec/src/main.py", line 203, in <module>
-    main()
-  File "/work/src_word2vec/netarkivet-word2vec/src/main.py", line 149, in main
-    model = model_class.load(os.path.join(args.save_path, f"{args.model}.model"))
-  File "/opt/conda/lib/python3.9/site-packages/gensim/models/word2vec.py", line 1939, in load
-    model = super(Word2Vec, cls).load(*args, **kwargs)
-  File "/opt/conda/lib/python3.9/site-packages/gensim/utils.py", line 487, in load
-    obj._load_specials(fname, mmap, compress, subname)
-  File "/opt/conda/lib/python3.9/site-packages/gensim/models/word2vec.py", line 1955, in _load_specials
-    super(Word2Vec, self)._load_specials(*args, **kwargs)
-  File "/opt/conda/lib/python3.9/site-packages/gensim/utils.py", line 518, in _load_specials
-    getattr(self, attrib)._load_specials(cfname, mmap, compress, subname)
-  File "/opt/conda/lib/python3.9/site-packages/gensim/models/keyedvectors.py", line 264, in _load_specials
-    super(KeyedVectors, self)._load_specials(*args, **kwargs)
-  File "/opt/conda/lib/python3.9/site-packages/gensim/utils.py", line 529, in _load_specials
-    val = np.load(subname(fname, attrib), mmap_mode=mmap)
-  File "/opt/conda/lib/python3.9/site-packages/numpy/lib/npyio.py", line 435, in load
-    raise ValueError("Cannot load file containing pickled data "
-ValueError: Cannot load file containing pickled data when allow_pickle=False
-Initialising model
-/work/src_word2vec/netarkivet-word2vec/src/main.py:154: RuntimeWarning: Model not found in the directory: /work/word2vec/third/, creating model
-  warnings.warn(
-wandb: Currently logged in as: kardosdrur (chcaa). Use `wandb login --relogin` to force relogin
-wandb: Tracking run with wandb version 0.12.16
-wandb: Run data is saved locally in /work/src_word2vec/netarkivet-word2vec/src/wandb/run-20220509_132257-3ulvgzpo
-wandb: Run `wandb offline` to turn off syncing.
-wandb: Syncing run lyric-sound-2
-wandb: ⭐️ View project at https://wandb.ai/chcaa/netarkivet-word2vec
-wandb: 🚀 View run at https://wandb.ai/chcaa/netarkivet-word2vec/runs/3ulvgzpo
-Training sequence started
-Traceback (most recent call last):
-  File "/work/src_word2vec/netarkivet-word2vec/src/main.py", line 203, in <module>
-    main()
-  File "/work/src_word2vec/netarkivet-word2vec/src/main.py", line 185, in main
-    for loss in train(
-  File "/work/src_word2vec/netarkivet-word2vec/src/utils/training.py", line 40, in train
-    for texts in text_chunks:
-  File "/work/src_word2vec/netarkivet-word2vec/src/utils/streams.py", line 73, in chunk
-    for index, elem in enumerate(iterable):
-  File "/work/src_word2vec/netarkivet-word2vec/src/utils/streams.py", line 313, in stream_cleaned_texts
-    porn_domains = get_porn_domains(data_path=data_path)
-  File "/work/src_word2vec/netarkivet-word2vec/src/utils/streams.py", line 272, in get_porn_domains
-    safe_domains_dict = pickle.load(f)
-KeyboardInterrupt
-wandb: Waiting for W&B process to finish... (failed 255). Press Control-C to abort syncing.
-wandb: - 0.001 MB of 0.001 MB uploaded (0.000 MB deduped)wandb: \ 0.001 MB of 0.001 MB uploaded (0.000 MB deduped)wandb: | 0.001 MB of 0.006 MB uploaded (0.000 MB deduped)wandb: / 0.001 MB of 0.006 MB uploaded (0.000 MB deduped)wandb: - 0.001 MB of 0.006 MB uploaded (0.000 MB deduped)wandb: \ 0.006 MB of 0.006 MB uploaded (0.000 MB deduped)wandb: | 0.006 MB of 0.006 MB uploaded (0.000 MB deduped)wandb: / 0.006 MB of 0.006 MB uploaded (0.000 MB deduped)wandb: - 0.006 MB of 0.006 MB uploaded (0.000 MB deduped)wandb: \ 0.006 MB of 0.006 MB uploaded (0.000 MB deduped)wandb: | 0.006 MB of 0.006 MB uploaded (0.000 MB deduped)wandb:                                                                                
-wandb: Synced lyric-sound-2: https://wandb.ai/chcaa/netarkivet-word2vec/runs/3ulvgzpo
-wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
-wandb: Find logs at: ./wandb/run-20220509_132257-3ulvgzpo/logs
-Initialising model
-/work/src_word2vec/netarkivet-word2vec/src/main.py:154: RuntimeWarning: Model not found in the directory: /work/word2vec/third/, creating model
-  warnings.warn(
-wandb: Currently logged in as: kardosdrur (chcaa). Use `wandb login --relogin` to force relogin
-wandb: Tracking run with wandb version 0.12.16
-wandb: Run data is saved locally in /work/src_word2vec/netarkivet-word2vec/src/wandb/run-20220509_132354-2z0rzy2a
-wandb: Run `wandb offline` to turn off syncing.
-wandb: Syncing run earthy-cherry-3
-wandb: ⭐️ View project at https://wandb.ai/chcaa/netarkivet-word2vec
-wandb: 🚀 View run at https://wandb.ai/chcaa/netarkivet-word2vec/runs/2z0rzy2a
-Training sequence started
-Initialising model
-/work/66704/src_word2vec/netarkivet-word2vec/src/main.py:154: RuntimeWarning: Model not found in the directory: /work/doc2vec/second/, creating model
-  warnings.warn(
-wandb: Currently logged in as: kardosdrur (chcaa). Use `wandb login --relogin` to force relogin
-wandb: Tracking run with wandb version 0.12.16
-wandb: Run data is saved locally in /work/66704/src_word2vec/netarkivet-word2vec/src/wandb/run-20220509_133451-33suae32
-wandb: Run `wandb offline` to turn off syncing.
-wandb: Syncing run genial-glade-4
-wandb: ⭐️ View project at https://wandb.ai/chcaa/netarkivet-word2vec
-wandb: 🚀 View run at https://wandb.ai/chcaa/netarkivet-word2vec/runs/33suae32
-Training sequence started
-Initialising model
-/work/66704/src_word2vec/netarkivet-word2vec/src/main.py:154: RuntimeWarning: Model not found in the directory: /work/doc2vec/second/, creating model
-  warnings.warn(
-wandb: Currently logged in as: kardosdrur (chcaa). Use `wandb login --relogin` to force relogin
-wandb: Tracking run with wandb version 0.12.16
-wandb: Run data is saved locally in /work/66704/src_word2vec/netarkivet-word2vec/src/wandb/run-20220509_133640-3rqsg165
-wandb: Run `wandb offline` to turn off syncing.
-wandb: Syncing run prime-pyramid-1
-wandb: ⭐️ View project at https://wandb.ai/chcaa/netarkivet-doc2vec
-wandb: 🚀 View run at https://wandb.ai/chcaa/netarkivet-doc2vec/runs/3rqsg165
-Training sequence started
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: ERROR Error while calling W&B API: Error 1040: Too many connections (<Response [500]>)
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: ERROR Error while calling W&B API: Error 1040: Too many connections (<Response [500]>)
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: ERROR Error while calling W&B API: Error 1040: Too many connections (<Response [500]>)
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-usage: main.py [-h] --data_path DATA_PATH --save_path SAVE_PATH --non_duplicates_path NON_DUPLICATES_PATH [--preprocessing_workers PREPROCESSING_WORKERS] [--training_workers TRAINING_WORKERS] [--window_size WINDOW_SIZE]
-               [--vector_size VECTOR_SIZE] [--text_chunksize TEXT_CHUNKSIZE] [--text_samplesize TEXT_SAMPLESIZE] [--filter_porn FILTER_PORN]
-               [model]
-main.py: error: the following arguments are required: --non_duplicates_path
-Initialising model
-/work/src_word2vec/netarkivet-word2vec/src/main.py:154: RuntimeWarning: Model not found in the directory: /work/word2vec/fourth_large/, creating model
-  warnings.warn(
-wandb: Currently logged in as: kardosdrur (chcaa). Use `wandb login --relogin` to force relogin
-wandb: Tracking run with wandb version 0.12.16
-wandb: Run data is saved locally in /work/src_word2vec/netarkivet-word2vec/src/wandb/run-20220512_154353-12eq2eoi
-wandb: Run `wandb offline` to turn off syncing.
-wandb: Syncing run peachy-butterfly-5
-wandb: ⭐️ View project at https://wandb.ai/chcaa/netarkivet-word2vec
-wandb: 🚀 View run at https://wandb.ai/chcaa/netarkivet-word2vec/runs/12eq2eoi
-Training sequence started
-Traceback (most recent call last):
-  File "/work/src_word2vec/netarkivet-word2vec/src/main.py", line 203, in <module>
-    main()
-  File "/work/src_word2vec/netarkivet-word2vec/src/main.py", line 185, in main
-    for loss in train(
-  File "/work/src_word2vec/netarkivet-word2vec/src/utils/training.py", line 50, in train
-    model.train(
-  File "/opt/conda/lib/python3.9/site-packages/gensim/models/word2vec.py", line 1070, in train
-    trained_word_count_epoch, raw_word_count_epoch, job_tally_epoch = self._train_epoch(
-  File "/opt/conda/lib/python3.9/site-packages/gensim/models/word2vec.py", line 1431, in _train_epoch
-    trained_word_count, raw_word_count, job_tally = self._log_epoch_progress(
-  File "/opt/conda/lib/python3.9/site-packages/gensim/models/word2vec.py", line 1286, in _log_epoch_progress
-    report = progress_queue.get()  # blocks if workers too slow
-  File "/opt/conda/lib/python3.9/queue.py", line 171, in get
-    self.not_empty.wait()
-  File "/opt/conda/lib/python3.9/threading.py", line 312, in wait
-    waiter.acquire()
-KeyboardInterrupt
-wandb: Waiting for W&B process to finish... (failed 255). Press Control-C to abort syncing.
-wandb: - 0.001 MB of 0.001 MB uploaded (0.000 MB deduped)wandb: \ 0.001 MB of 0.001 MB uploaded (0.000 MB deduped)wandb: | 0.001 MB of 0.001 MB uploaded (0.000 MB deduped)wandb: / 0.001 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: - 0.001 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: \ 0.001 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: | 0.006 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: / 0.007 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: - 0.007 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: \ 0.007 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: | 0.007 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: / 0.007 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: - 0.007 MB of 0.007 MB uploaded (0.000 MB deduped)wandb: \ 0.007 MB of 0.007 MB uploaded (0.000 MB deduped)wandb:                                                                                
-wandb: 
-wandb: Run history:
-wandb:           Accuracy - Odd one out ▁▃▄▆▇██▇▇
-wandb:                             Loss █▅▃▂▂▂▁▂▁
-wandb:         Similarities Sperman's ρ ▁▅▆▇▇████
-wandb: Similarities vocabulary coverage ▁▅▆██████
-wandb: 
-wandb: Run summary:
-wandb:           Accuracy - Odd one out 0.79787
-wandb:                             Loss 6737309.0
-wandb:         Similarities Sperman's ρ 0.26382
-wandb: Similarities vocabulary coverage 0.99115
-wandb: 
-wandb: Synced peachy-butterfly-5: https://wandb.ai/chcaa/netarkivet-word2vec/runs/12eq2eoi
-wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
-wandb: Find logs at: ./wandb/run-20220512_154353-12eq2eoi/logs
-Traceback (most recent call last):
-  File "/work/src_word2vec/netarkivet-word2vec/src/main.py", line 7, in <module>
-    from utils.evaluation import evaluate_word2vec
-  File "/work/src_word2vec/netarkivet-word2vec/src/utils/evaluation.py", line 64, in <module>
-    word1=similarity_df["word1"].map(lambda s: normalize(s, keep_sentences=False)),
-  File "/opt/conda/lib/python3.9/site-packages/pandas/core/series.py", line 4237, in map
-    new_values = self._map_values(arg, na_action=na_action)
-  File "/opt/conda/lib/python3.9/site-packages/pandas/core/base.py", line 880, in _map_values
-    new_values = map_f(values, mapper)
-  File "pandas/_libs/lib.pyx", line 2870, in pandas._libs.lib.map_infer
-  File "/work/src_word2vec/netarkivet-word2vec/src/utils/evaluation.py", line 64, in <lambda>
-    word1=similarity_df["word1"].map(lambda s: normalize(s, keep_sentences=False)),
-  File "/work/src_word2vec/netarkivet-word2vec/src/utils/text.py", line 97, in normalize
-    text = text.translate(table)
-NameError: name 'table' is not defined
-Initialising model
-Loading model from save path
-wandb: Currently logged in as: kardosdrur (chcaa). Use `wandb login --relogin` to force relogin
-wandb: Tracking run with wandb version 0.12.16
-wandb: Run data is saved locally in /work/src_word2vec/netarkivet-word2vec/src/wandb/run-20220512_161039-238r04ma
-wandb: Run `wandb offline` to turn off syncing.
-wandb: Syncing run toasty-dust-6
-wandb: ⭐️ View project at https://wandb.ai/chcaa/netarkivet-word2vec
-wandb: 🚀 View run at https://wandb.ai/chcaa/netarkivet-word2vec/runs/238r04ma
-Training sequence started
-Initialising model
-wandb: Network error (ReadTimeout), entering retry loop.
-wandb: Network error (ReadTimeout), entering retry loop.
-/opt/conda/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 6 leaked semaphore objects to clean up at shutdown
-  warnings.warn('resource_tracker: There appear to be %d '
