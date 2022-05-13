@@ -109,6 +109,15 @@ def create_parser() -> argparse.ArgumentParser:
         help="Specifies whether porn should be filtered from the dataset. (optional, "
         + "default=True)",
     )
+    parser.add_argument(
+        "--skip_gram",
+        dest="skip_gram",
+        required=False,
+        default=False,
+        type=bool,
+        help="Specifies whether Word2Vec should use skip-gram (optional, "
+        + "default=False)",
+    )
     return parser
 
 
@@ -123,6 +132,8 @@ def main() -> None:
         "window": args.window_size,
         "workers": args.training_workers,
     }
+    if args.skip_gram:
+        hyperparameters["sg"] = 1
     # Check whether we want to train a word2vec or a doc2vec
     if args.model == "word2vec":
         evaluate = evaluate_word2vec

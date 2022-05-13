@@ -1,0 +1,13 @@
+nohup: ignoring input
+/work/src_word2vec/netarkivet-word2vec/src/main.py:165: RuntimeWarning: Model not found in the directory: /work/word2vec/skip_gram_large/, creating model
+  warnings.warn(
+wandb: Currently logged in as: kardosdrur (chcaa). Use `wandb login --relogin` to force relogin
+Initialising model
+wandb: Tracking run with wandb version 0.12.16
+wandb: Run data is saved locally in /work/src_word2vec/netarkivet-word2vec/src/wandb/run-20220512_180805-3lfcrf60
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run lilac-deluge-8
+wandb: ⭐️ View project at https://wandb.ai/chcaa/netarkivet-word2vec
+wandb: 🚀 View run at https://wandb.ai/chcaa/netarkivet-word2vec/runs/3lfcrf60
+Training sequence started
+wandb: Network error (ReadTimeout), entering retry loop.

@@ -183,3 +183,6 @@ wandb: 🚀 View run at https://wandb.ai/chcaa/netarkivet-word2vec/runs/238r04ma
 Training sequence started
 Initialising model
 wandb: Network error (ReadTimeout), entering retry loop.
+wandb: Network error (ReadTimeout), entering retry loop.
+/opt/conda/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 6 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
