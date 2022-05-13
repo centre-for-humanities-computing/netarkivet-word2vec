@@ -9,3 +9,5 @@ wandb.key
 .vscode/
 
 *.ipynb
+*.out
+*.log
