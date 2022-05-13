@@ -132,6 +132,7 @@ def main() -> None:
         "window": args.window_size,
         "workers": args.training_workers,
     }
+    # We add skip_gram as a hyperparameter if it is set to True in args
     if args.skip_gram:
         hyperparameters["sg"] = 1
     # Check whether we want to train a word2vec or a doc2vec
@@ -171,8 +172,7 @@ def main() -> None:
     # ----Initializing logging----
     try:
         # We try to log to wandb
-        wandb.init(project=wandb_project, entity="chcaa")
-        wandb.config = hyperparameters
+        wandb.init(project=wandb_project, entity="chcaa", config=hyperparameters)
         log = "wandb"
     except Exception:
         # If we don't succeed, we log to stdout instead and warn the user

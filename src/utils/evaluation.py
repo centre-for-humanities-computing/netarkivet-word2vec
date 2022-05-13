@@ -1,14 +1,22 @@
 """ Utility functions for objectively assessing the performance of language embedding models """
 from typing import Dict, Iterable, Tuple
+
 import numpy as np
 import pandas as pd
+from danlp.datasets import WordSim353Da, DSD
+from deprecated import deprecated
 from gensim.models import Word2Vec
 from scipy.stats import spearmanr
 
 from utils.text import normalize
 
+# Loading DataFrame with odd-one-out tests
 odd_df = pd.read_csv("../evaluation/odd_one_out.csv")
 odd_one_out = odd_df.to_numpy().tolist()
+
+# Loading similarity Datasets
+ws353 = WordSim353Da()
+dsd = DSD()
 
 
 def is_in_vocab(words: Iterable[str], model: Word2Vec) -> np.ndarray:
@@ -58,19 +66,14 @@ def accuracy_odd_one_out(model: Word2Vec) -> float:
     return accuracy
 
 
-# Load similarity table to a DatFrame
-similarity_df = pd.read_csv("../evaluation/similarity.csv")
-similarity_df = similarity_df.assign(
-    word1=similarity_df["word1"].map(lambda s: normalize(s, keep_sentences=False)),
-    word2=similarity_df["word2"].map(lambda s: normalize(s, keep_sentences=False)),
-)
-
-
+@deprecated(reason="Use KeyedVectors.evaluate_word_pairs instead")
 def similarity(
     words1: Iterable[str], words2: Iterable[str], model: Word2Vec
 ) -> np.ndarray:
     """
     Calculates similarity scores for two series of words based on the model.
+
+    DEPRECATED - Completely unnecessary, evaluate_word_pairs does the same thing better
 
     Parameters
     ----------
@@ -87,12 +90,15 @@ def similarity(
     )
 
 
+@deprecated(reason="Use DaNLP evaluation metrics instead")
 def accuracy_similarities(model: Word2Vec) -> Tuple[float, float]:
     """
     Tests the model on word pairs with human annotated similarity scores.
     Returns the Spearman's correlation coefficient between cosine
     similarities of two word vectors and human-given similarity scores,
     as well as the extent to which the models vocabulary covers the test vocabulary.
+
+    DEPRECATED - Using DaNLP evaluation measures is recommended
 
     Parameters
     ----------
@@ -110,6 +116,13 @@ def accuracy_similarities(model: Word2Vec) -> Tuple[float, float]:
         gonna perform better.
         (Could've returned p-value, might do it later idk)
     """
+    # Load similarity table to a DataFrame
+    similarity_df = pd.read_csv("../evaluation/similarity.csv")
+    similarity_df = similarity_df.assign(
+        word1=similarity_df["word1"].map(lambda s: normalize(s, keep_sentences=False)),
+        word2=similarity_df["word2"].map(lambda s: normalize(s, keep_sentences=False)),
+    )
+
     df = similarity_df
     df = df[is_in_vocab(df["word1"], model) & is_in_vocab(df["word2"], model)]
     human_scores = df["similarity"]
@@ -132,13 +145,21 @@ def evaluate_word2vec(model: Word2Vec) -> Dict[str, float]:
     ----------
     evaluation_metrics: dict
         A dictionary containing score on the odd-one-out test,
-        spearman's rho in the similarity test and
-        vocab coverage on the similarities test.
+        spearman's rho, p-value and vocabulary coverage of the similarity tests.
     """
     odd = accuracy_odd_one_out(model)
-    rho, vocab_coverage = accuracy_similarities(model)
+    _, spearman_dsd, oov_dsd = model.wv.evaluate_word_pairs(
+        dsd.file_path, delimiter="\t"
+    )
+    _, spearman_ws353, oov_ws353 = model.wv.evaluate_word_pairs(
+        ws353.file_path, delimiter=","
+    )
     return {
         "Accuracy - Odd one out": odd,
-        "Similarities Sperman's ρ": rho,
-        "Similarities vocabulary coverage": vocab_coverage,
+        "DSD similarities Spearman's ρ": spearman_dsd[0],
+        "DSD similarities p-value": spearman_dsd[1],
+        "DSD similarities out of vocabulary %": oov_dsd,
+        "W353 similarities Spearman's ρ": spearman_ws353[0],
+        "W353 similarities p-value": spearman_ws353[1],
+        "W353 similarities out of vocabulary %": oov_ws353,
     }

@@ -2,6 +2,8 @@ gensim
 wandb
 scipy
 pandas
+danlp
+Deprecated
 
 # style
 black
