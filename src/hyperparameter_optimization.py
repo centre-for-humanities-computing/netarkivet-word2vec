@@ -1,11 +1,14 @@
+"""
+Script for optimizng hyperparameters of the Word2Vec model
+"""
 from itertools import islice
 from typing import Any, Dict, Tuple
+
 import optuna
-
-from gensim.models import Word2Vec
 import wandb
-from utils.evaluation import evaluate_word2vec
+from gensim.models import Word2Vec
 
+from utils.evaluation import evaluate_word2vec
 from utils.streams import chunk, sentence_stream, stream_cleaned_texts
 from utils.training import train
 
