@@ -4,6 +4,7 @@ scipy
 pandas
 danlp
 Deprecated
+optuna
 
 # style
 black

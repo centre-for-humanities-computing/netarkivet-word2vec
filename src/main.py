@@ -1,3 +1,6 @@
+"""
+Main CLI script for training the Word2Vec model with the given hyperparameters
+"""
 import argparse
 import os
 import warnings
