@@ -1,11 +1,11 @@
 """ Utility functions for objectively assessing the performance of language embedding models """
-from typing import Dict, Iterable, Tuple
+from typing import Dict, Iterable, List, Tuple
 
 import numpy as np
 import pandas as pd
 from danlp.datasets import WordSim353Da, DSD
 from deprecated import deprecated
-from gensim.models import Word2Vec
+from gensim.models import Word2Vec, Doc2Vec
 from scipy.stats import spearmanr
 
 from utils.text import normalize
@@ -163,3 +163,11 @@ def evaluate_word2vec(model: Word2Vec) -> Dict[str, float]:
         "W353 similarities p-value": spearman_ws353[1],
         "W353 similarities out of vocabulary %": oov_ws353,
     }
+
+
+def evaluate_doc2vec(
+    model: Doc2Vec, texts: List[str], domains: List[str]
+) -> Dict[str, float]:
+    # TODO: Implement
+    # TODO: Write docstring
+    return {"sex": 0}
