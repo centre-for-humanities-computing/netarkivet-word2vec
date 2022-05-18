@@ -16,7 +16,6 @@ from utils.training import train
 # I just didn't wantr to write a CLI for this as it would have taken way more time
 # and it is n't going to be used as excessively as the main script
 DATA_PATH = "/work/netarkivet-cleaned/"
-NON_DUPLICATES_PATH = "/work/non_duplicates/"
 
 
 def suggest_hyperparameters(trial: optuna.Trial) -> Dict[str, Any]:
@@ -66,15 +65,13 @@ def training_sequence(model: Word2Vec, n_chunks: int = 10) -> None:
     """
     text_chunks = islice(
         chunk(
-            stream_cleaned_texts(DATA_PATH, NON_DUPLICATES_PATH, filter_porn=True),
+            stream_cleaned_texts(DATA_PATH, filter_porn=True),
             chunk_size=100_000,
             sample_size=150_100,
         ),
         n_chunks,
     )
-    preprocess = lambda texts: sentence_stream(
-        texts, window_size=model.window, workers=2
-    )
+    preprocess = lambda texts: sentence_stream(texts, workers=2)
     for i_chunk, loss in enumerate(
         train(
             model=model,

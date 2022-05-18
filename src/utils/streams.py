@@ -8,10 +8,31 @@ import re
 from itertools import islice, zip_longest
 from typing import Callable, Iterable, List, Optional, Set, TypeVar
 
-import numpy as np
+from deprecated import deprecated
 from gensim.models.doc2vec import TaggedDocument
 
 import utils.text
+
+T = TypeVar("T")
+
+
+def flatten(nested: Iterable[Iterable[T]]) -> Iterable[T]:
+    """
+    Function that turns a nested stream into a flat stream.
+
+    Parameters
+    ----------
+    nested: iterable of iterable of T
+        Nested iterable that you want to flatten
+
+    Yields
+    ----------
+    element: T
+        Individual elements of the nested iterable
+    """
+    for sub in nested:
+        for elem in sub:
+            yield elem
 
 
 def reusable(gen_func: Callable) -> Callable:
@@ -167,18 +188,16 @@ def get_years(data_path: str = ".") -> List[str]:
     return years
 
 
-def stream_by_text_id(
-    file_path: str, text_ids: Set[int], porn_domains: Optional[Set[str]] = None
+def stream_file(
+    file_path: str, porn_domains: Optional[Set[str]] = None
 ) -> Iterable[str]:
     """
-    Streams all texts from a jsonl file that are in the set of text_ids supplied.
+    Streams all texts from a jsonl file.
 
     Parameters
     ----------
     file_path: str
         Path to the jsonl file in question
-    text_ids: set of integer
-        The ids to stream from the file.
     porn_domains: set of str or None, default None
         If provided, these domains will not be streamed.
 
@@ -189,26 +208,24 @@ def stream_by_text_id(
     """
     with open(file_path) as input_file:
         # Since id is not one of the fields, I have to enumerate all records
-        for text_id, line in enumerate(input_file):
-            if text_id in text_ids:
-                # parsing the record
-                record = json.loads(line)
-                # If passes quality filters, it yields the content of the record
-                record_okay = (
-                    record["passed_quality_filter"] and record["language"] == "da"
-                )
-                if porn_domains is not None:
-                    record_okay = record_okay and (
-                        record["domain_key"] not in porn_domains
-                    )
-                if record_okay:
-                    yield record["text"]
+        for line in input_file:
+            # parsing the record
+            record = json.loads(line)
+            # If passes quality filters, it yields the content of the record
+            record_okay = (
+                record["passed_quality_filter"]
+                and record["language"] == "da"
+                and not record["is_duplicate"]
+            )
+            if porn_domains is not None:
+                record_okay = record_okay and (record["domain_key"] not in porn_domains)
+            if record_okay:
+                yield record["text"]
 
 
 @reusable
 def stream_year(
     data_path: str,
-    non_duplicates_path: str,
     year: str,
     porn_domains: Optional[Set[str]] = None,
 ) -> Iterable[str]:
@@ -219,8 +236,6 @@ def stream_year(
     ----------
     data_path: str
         Path to the dataset
-    non_duplicates_path: str
-        Path, where non duplicate id numpy files are
     year: str
         The year from which texts should be streamed.
     porn_domains: set of str or None, default None
@@ -231,21 +246,13 @@ def stream_year(
     text: str
         Text content from the given year.
     """
-    # Goes through all files in non_duplicates_path
-    for root, _, files in os.walk(os.path.join(non_duplicates_path, year)):
-        for mask_file in files:
-            if mask_file.endswith(".npy"):
-                # If the file is a numpy array
-                file_id = mask_file.split(".")[0]
-                # The load it and then turn it into a set, so that it has O(1)
-                # access time, probably should have used a boolean array though
-                # so I wouldn't have to deal with this mess, and you would not have to look
-                # at this lovely piece of spaghetti code :))
-                text_ids = set(np.load(os.path.join(root, mask_file)))
-                # Streams all texts from a certain data file, that are in text_ids
-                for text in stream_by_text_id(
-                    os.path.join(data_path, f"{year}/{file_id}.jsonl"),
-                    text_ids=text_ids,
+    for root, _, files in os.walk(os.path.join(data_path, f"{year}")):
+        # Go through all files in the year directory
+        for file in files:
+            # If it's a json file, stream all texts from it
+            if file.endswith(".jsonl"):
+                for text in stream_file(
+                    os.path.join(root, file),
                     porn_domains=porn_domains,
                 ):
                     yield text
@@ -287,9 +294,7 @@ def get_porn_domains(data_path: str) -> Set[str]:
 
 
 @reusable
-def stream_cleaned_texts(
-    data_path: str, non_duplicates_path: str, filter_porn=True
-) -> Iterable[str]:
+def stream_cleaned_texts(data_path: str, filter_porn=True) -> Iterable[str]:
     """
     Generator yielding all cleaned texts, that are not duplicates :)
 
@@ -297,8 +302,6 @@ def stream_cleaned_texts(
     ----------
     data_path: str
         Specifies where our data lives, where to get file contents from.
-    non_duplicates_path: str
-        Path, where non duplicate id numpy files are
     filter_porn: bool, default True
         Specifies whether suspected porn domains should be left
         out of the stream.
@@ -317,8 +320,7 @@ def stream_cleaned_texts(
     years = get_years(data_path=data_path)
     # Collects streams of all years into a list
     year_streams = [
-        stream_year(data_path, non_duplicates_path, year, porn_domains=porn_domains)
-        for year in years
+        stream_year(data_path, year, porn_domains=porn_domains) for year in years
     ]
     # Streams texts from all years at the same time, so that the data is more shuffled
     # We use the zip_longest function from itertools, so that we iterate as
@@ -400,7 +402,7 @@ def document_stream(
 
 @reusable
 def sentence_stream(
-    texts: Iterable[str], window_size: int = 5, chunksize: int = 2000, workers: int = 6
+    texts: Iterable[str], chunksize: int = 2000, workers: int = 6
 ) -> Iterable[List[str]]:
     """
     Streams sentences from the given text stream.
@@ -409,10 +411,6 @@ def sentence_stream(
     ----------
     texts: Iterable of str
         Text stream to sentencize
-    window_size: int, default 5
-        Windows size of the word2vec model.
-        The stream will only yield sentences that are as least
-        as long as window_size
     chunksize: int, default 2000
         Size of text chunks the stream should process in parallel
     workers: int, default 6
@@ -431,6 +429,4 @@ def sentence_stream(
         # This stream is going to be chunked and sampled anyway
         for doc in docs:
             for sentence in doc:
-                # Only return a sentence if it's long enough
-                if len(sentence) >= window_size:
-                    yield sentence
+                yield sentence

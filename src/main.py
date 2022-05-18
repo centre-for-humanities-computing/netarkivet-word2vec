@@ -11,6 +11,8 @@ from utils.evaluation import evaluate_word2vec
 from utils.streams import chunk, document_stream, sentence_stream, stream_cleaned_texts
 from utils.training import train
 
+DATA_PATH = "/work/netarkivet-cleaned/"
+
 
 def create_parser() -> argparse.ArgumentParser:
     """
@@ -33,9 +35,10 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--data_path",
         dest="data_path",
-        required=True,
+        required=False,
         type=str,
-        help="Path to the root directory of the data files",
+        default=DATA_PATH,
+        help=f"Path to the root directory of the data files (optional, default={DATA_PATH})",
     )
     parser.add_argument(
         "--save_path",
@@ -44,13 +47,6 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         help="Path, where the model is going to be saved and where the model is "
         + "initialised from",
-    )
-    parser.add_argument(
-        "--non_duplicates_path",
-        dest="non_duplicates_path",
-        required=True,
-        type=str,
-        help="Path, where non_duplicate id numpy files are stored",
     )
     parser.add_argument(
         "--preprocessing_workers",
@@ -144,7 +140,7 @@ def main() -> None:
         model_class = Word2Vec
         # If we want to train word2vec, we turn the stream of texts into a sentence stream
         preprocess = lambda texts: sentence_stream(
-            texts, window_size=args.window_size, workers=args.preprocessing_workers
+            texts, workers=args.preprocessing_workers
         )
         wandb.config = hyperparameters
         wandb_project = "netarkivet-word2vec"
@@ -187,9 +183,7 @@ def main() -> None:
 
     # ----Creating text chunk stream----
     text_chunks = chunk(
-        stream_cleaned_texts(
-            args.data_path, args.non_duplicates_path, args.filter_porn
-        ),
+        stream_cleaned_texts(args.data_path, args.filter_porn),
         chunk_size=args.text_chunksize,
         sample_size=args.text_samplesize,
     )
