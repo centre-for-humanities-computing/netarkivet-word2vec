@@ -368,7 +368,7 @@ def reservoir_sample(stream: Iterable[T], sample_size: int) -> List[T]:
 @reusable
 def document_stream(
     texts: Iterable[str], chunksize: int = 2000, workers: int = 6
-) -> Iterable[TaggedDocument]:
+) -> Iterable[List[str]]:
     """
     Streams documents from the given text stream.
 
@@ -384,8 +384,8 @@ def document_stream(
 
     Yields
     ----------
-    doc: TaggedDocument
-        Tagged document that can be used by Doc2Vec
+    doc: List of str
+        List of words in a given document
     """
     with multiprocessing.Pool(processes=workers) as pool:
         # We use imap_unordered, as the order of the documents does not matter for training
@@ -394,10 +394,27 @@ def document_stream(
         docs = pool.imap_unordered(
             utils.text.normalized_document, texts, chunksize=chunksize
         )
-        for i, doc in enumerate(docs):
-            # For some reason the Gensim gods demand that we do this
-            # I don't really get it, but you can't just supply list of strings
-            yield TaggedDocument(doc, [i])
+        for doc in docs:
+            yield doc
+
+
+@reusable
+def tag_documents(doc_stream: Iterable[List[str]]) -> Iterable[TaggedDocument]:
+    """
+    Turns a stream of documents to a stream of TaggedDocuments.
+
+    Parameters
+    ----------
+    doc_stream: iterable of list of str
+        Stream of documents in the form of list of words.
+
+    Yields
+    ----------
+    doc: TaggedDocument
+        Document with tag added
+    """
+    for tag, doc in doc_stream:
+        yield TaggedDocument(words=doc, tags=[tag])
 
 
 @reusable

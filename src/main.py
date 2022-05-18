@@ -12,7 +12,13 @@ import wandb
 from gensim.models import Doc2Vec, Word2Vec
 
 from utils.evaluation import evaluate_word2vec
-from utils.streams import chunk, document_stream, sentence_stream, stream_cleaned_texts
+from utils.streams import (
+    chunk,
+    document_stream,
+    sentence_stream,
+    stream_cleaned_texts,
+    tag_documents,
+)
 from utils.training import train
 
 DATA_PATH = "/work/netarkivet-cleaned/"
@@ -173,8 +179,8 @@ def main() -> None:
         evaluate = lambda _: {}
         model_class = Doc2Vec
         # If we want to train doc2vec, we turn the stream of texts into a stream of TaggedDocuments
-        preprocess = lambda texts: document_stream(
-            texts, workers=args.preprocessing_workers
+        preprocess = lambda texts: tag_documents(
+            document_stream(texts, workers=args.preprocessing_workers)
         )
         wandb_project = "netarkivet-doc2vec"
     # ----Initializing the model----

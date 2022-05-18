@@ -14,7 +14,7 @@ from utils.training import train
 
 # This is all set up for my Ucloud instance, if you have a different setup please change the script
 # I just didn't wantr to write a CLI for this as it would have taken way more time
-# and it is n't going to be used as excessively as the main script
+# and it isn't going to be used as excessively as the main script
 DATA_PATH = "/work/netarkivet-cleaned/"
 
 
