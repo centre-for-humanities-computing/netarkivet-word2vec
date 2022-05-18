@@ -12,6 +12,11 @@ from deprecated import deprecated
 from gensim.models.doc2vec import TaggedDocument
 
 import utils.text
+from utils.notebook import is_notebook
+
+if is_notebook():
+    print("Code running in a notebook, loading display tools")
+    from IPython.display import clear_output
 
 T = TypeVar("T")
 
@@ -159,7 +164,10 @@ def progress_bar_stream(items: List[U]) -> Iterable[U]:
         progress_bar = FILL_CHARACTER * filled_length + "-" * (
             BAR_LENGTH - filled_length
         )
-        os.system("clear")
+        if is_notebook():
+            clear_output(wait=True)
+        else:
+            os.system("clear")
         print(
             f"Progress: |{progress_bar}| {percent}% \n Current item processed: {item}\n"
         )
