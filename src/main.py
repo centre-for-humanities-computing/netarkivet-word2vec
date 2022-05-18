@@ -1,8 +1,12 @@
 """
 Main CLI script for training the Word2Vec model with the given hyperparameters
 """
-import argparse
 import os
+import sys
+
+# Silence imports
+sys.stdout = os.devnull
+import argparse
 import warnings
 import wandb
 from gensim.models import Doc2Vec, Word2Vec
@@ -12,18 +16,23 @@ from utils.streams import chunk, document_stream, sentence_stream, stream_cleane
 from utils.training import train
 
 DATA_PATH = "/work/netarkivet-cleaned/"
+TEXT_CHUNKSIZE = 100_000
+TEXT_SAMPLESIZE = 150_000
+
+# Unsilence stdout
+sys.stdout = sys.__stdout__
 
 
 def create_parser() -> argparse.ArgumentParser:
     """
-    Generates parser for the main functiuon CLI.
+    Generates parser for the main function CLI.
 
     Returns
     ----------
     parser: argparse.ArgumentParser
         The parser boiii
     """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "model",
         nargs="?",
@@ -33,14 +42,17 @@ def create_parser() -> argparse.ArgumentParser:
         + "(options: {'word2vec', 'doc2vec'} optional,default=word2vec)",
     )
     parser.add_argument(
+        "-d",
         "--data_path",
         dest="data_path",
+        nargs="?",
         required=False,
         type=str,
         default=DATA_PATH,
         help=f"Path to the root directory of the data files (optional, default={DATA_PATH})",
     )
     parser.add_argument(
+        "-s",
         "--save_path",
         dest="save_path",
         required=True,
@@ -49,8 +61,10 @@ def create_parser() -> argparse.ArgumentParser:
         + "initialised from",
     )
     parser.add_argument(
+        "-p",
         "--preprocessing_workers",
         dest="preprocessing_workers",
+        nargs="?",
         required=False,
         default=6,
         type=int,
@@ -58,65 +72,74 @@ def create_parser() -> argparse.ArgumentParser:
         + "default=6)",
     )
     parser.add_argument(
+        "-t",
         "--training_workers",
         dest="training_workers",
+        nargs="?",
         required=False,
         default=6,
         type=int,
         help="Number of processes assigned to train the model (optional,default=6)",
     )
     parser.add_argument(
+        "-w",
         "--window_size",
         dest="window_size",
+        nargs="?",
         required=False,
         default=5,
         type=int,
         help="Window size of the work2vec model (optional,default=5)",
     )
     parser.add_argument(
+        "-v",
         "--vector_size",
         dest="vector_size",
+        nargs="?",
         required=False,
         default=100,
         type=int,
         help="Dimensionality of the desired word vectors (optional,default=100)",
     )
+    # RARELY IF EVER USED, and it clutters both the code and the CLI, so I decided to remove it
+    # parser.add_argument(
+    #     "--text_chunksize",
+    #     dest="text_chunksize",
+    #     nargs="?",
+    #     required=False,
+    #     default=100000,
+    #     type=int,
+    #     help="Size of chunks of text the model has to work on and shuffle (optional, "
+    #     + "default=100_000)",
+    # )
+    # parser.add_argument(
+    #     "--text_samplesize",
+    #     dest="text_samplesize",
+    #     nargs="?",
+    #     required=False,
+    #     default=150000,
+    #     type=int,
+    #     help="Size sample that has to be drawn randomly from each chunk (optional, "
+    #     + "default=150_000)",
+    # )
+
+    # Setting defaults instead
+    parser.set_defaults(text_chunksize=TEXT_CHUNKSIZE, text_samplesize=TEXT_SAMPLESIZE)
     parser.add_argument(
-        "--text_chunksize",
-        dest="text_chunksize",
-        required=False,
-        default=100000,
-        type=int,
-        help="Size of chunks of text the model has to work on and shuffle (optional, "
-        + "default=100_000)",
-    )
-    parser.add_argument(
-        "--text_samplesize",
-        dest="text_samplesize",
-        required=False,
-        default=150000,
-        type=int,
-        help="Size sample that has to be drawn randomly from each chunk (optional, "
-        + "default=150_000)",
-    )
-    parser.add_argument(
-        "--filter_porn",
+        "-n",
+        "--no_porn_filtering",
         dest="filter_porn",
-        required=False,
-        default=True,
-        type=bool,
-        help="Specifies whether porn should be filtered from the dataset. (optional, "
-        + "default=True)",
+        action="store_false",
+        help="Flag to turn of porn filtering",
     )
+    parser.set_defaults(filter_porn=True)
     parser.add_argument(
+        "-g",
         "--skip_gram",
-        dest="skip_gram",
-        required=False,
-        default=False,
-        type=bool,
-        help="Specifies whether Word2Vec should use skip-gram (optional, "
-        + "default=False)",
+        action="store_true",
+        help="Flag to force Word2Vec to use skip-gram instead of CBOW",
     )
+    parser.set_defaults(skip_gram=False)
     return parser
 
 
