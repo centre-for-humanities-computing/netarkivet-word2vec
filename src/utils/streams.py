@@ -429,4 +429,5 @@ def sentence_stream(
         # This stream is going to be chunked and sampled anyway
         for doc in docs:
             for sentence in doc:
-                yield sentence
+                if sentence:
+                    yield sentence
