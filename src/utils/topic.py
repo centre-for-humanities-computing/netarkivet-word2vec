@@ -1,3 +1,6 @@
+"""
+Module with utilities for topic modelling
+"""
 from typing import Iterable, List, Tuple
 
 from sklearn.decomposition import LatentDirichletAllocation
@@ -29,8 +32,12 @@ def create_topic_model(
     vectorizer: TfidfVectorizer
         Tf-idf vectorizer model
     """
+    # Transforming split documents to joint texts
+    documents = (" ".join(words) for words in document_stream)
     vectorizer = TfidfVectorizer(stop_words=STOPORD, max_features=15_000)
-    matrix = vectorizer.fit_transform(document_stream)
+    print("----Fitting Tf-idf vectorizer----")
+    matrix = vectorizer.fit_transform(documents)
+    print("----Fitting LDA----")
     lda = LatentDirichletAllocation(
         n_components=n_topics,
     ).fit(matrix)
