@@ -10,5 +10,6 @@ dat/
 .vscode/
 
 *.ipynb
+!src/topic_analysis.ipynb
 *.out
 *.log
