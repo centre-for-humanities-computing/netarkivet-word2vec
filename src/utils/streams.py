@@ -367,7 +367,7 @@ def reservoir_sample(stream: Iterable[T], sample_size: int) -> List[T]:
             reservoir.append(item)
         else:
             j = random.randint(0, index)
-            if j <= sample_size:
+            if j < sample_size:
                 reservoir[j] = item
     return reservoir
 
