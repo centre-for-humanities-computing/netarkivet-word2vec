@@ -344,7 +344,6 @@ def stream_cleaned_texts(data_path: str, filter_porn=True) -> Iterable[str]:
 T = TypeVar("T")
 
 
-@reusable
 def reservoir_sample(stream: Iterable[T], sample_size: int) -> List[T]:
     """
     Samples a given number of items randomly from a stream of unknown length.
