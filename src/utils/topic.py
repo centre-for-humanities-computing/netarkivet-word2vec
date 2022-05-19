@@ -58,7 +58,7 @@ def create_topic_model(
     )
     print("----Fitting Tf-idf vectorizer----")
     matrix = vectorizer.fit_transform(documents)
-    print("----Fitting LDA----")
+    print("----Fitting Topic model----")
     model_class = NMF if model_type == "nmf" else LatentDirichletAllocation
     model = model_class(
         n_components=n_topics,
