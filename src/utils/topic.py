@@ -14,6 +14,7 @@ def create_topic_model(
     document_stream: Iterable[List[str]],
     n_topics: int,
     max_freq: Optional[float] = None,
+    max_vocab: int = 15_000,
     model_type: str = "nmf",
 ) -> Tuple[Union[NMF, LatentDirichletAllocation], spmatrix, TfidfVectorizer]:
     """
@@ -28,6 +29,10 @@ def create_topic_model(
     max_freq: float or None, default None
         Frequency cutoff, words over this frequency are removed,
         if not specified, Danish stopwords are used
+    max_vocab: int, default 15_000
+        Maximum number of words to be included in the model.
+        If the sample size is too large, the vocabulary can realy get out of
+        hand and the tf-idf embeddings will occupy way to much memory.
     model_type: {'nmf', 'lda'}, default 'nmf'
         Type of topic model to use
 
@@ -45,6 +50,8 @@ def create_topic_model(
     ValueError:
         If a non-existant model_type is given, ValueError is raised
     """
+    # Lowercasing it in case some imbecile (me) gives capital letters as input
+    model_type = model_type.lower()
     if model_type not in {"nmf", "lda"}:
         raise ValueError(
             f"Given model type({model_type}) does not exist, please use either 'nmf' or 'lda'"
@@ -53,7 +60,7 @@ def create_topic_model(
     documents = (" ".join(words) for words in document_stream)
     vectorizer = TfidfVectorizer(
         stop_words=STOPORD,
-        max_features=15_000,
+        max_features=max_vocab,
         max_df=max_freq or 1.0,
     )
     print("----Fitting Tf-idf vectorizer----")

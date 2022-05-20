@@ -6,6 +6,7 @@ danlp
 Deprecated
 optuna
 pyldavis
+joblib
 
 # style
 black
