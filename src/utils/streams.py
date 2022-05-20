@@ -185,7 +185,7 @@ def get_years(data_path: str = ".") -> List[str]:
 
     Returns
     ----------
-    years: List[str]
+    years: list of str
         List of all years processed
     """
     years = []
@@ -196,6 +196,12 @@ def get_years(data_path: str = ".") -> List[str]:
     return years
 
 
+@deprecated(
+    """
+    Phased out in favor of streaming records, as it provides better separation
+    of concerns and we can extract valuable information at a higher level.
+    """
+)
 def stream_file(
     file_path: str, porn_domains: Optional[Set[str]] = None
 ) -> Iterable[str]:
@@ -231,39 +237,104 @@ def stream_file(
                 yield record["text"]
 
 
+def stream_records_from_file(file_path: str) -> Iterable[dict]:
+    """
+    Streams all records from the file at the given path that have passed
+    the quality filters, are in Danish and aren't duplicates
+
+    Parameters
+    ----------
+    file_path: str
+        Path to the file you'd like to stream
+
+    Yields
+    ----------
+    record: dict
+        Each record from the file
+    """
+    with open(file_path) as input_file:
+        # Since id is not one of the fields, I have to enumerate all records
+        for line in input_file:
+            # parsing the record
+            record = json.loads(line)
+            # If passes quality filters, it yields the content of the record
+            record_okay = (
+                record["passed_quality_filter"]
+                and record["language"] == "da"
+                and not record["is_duplicate"]
+            )
+            if record_okay:
+                yield record
+
+
+def filter_porn_domains(records: Iterable[dict], domains: Set[str]) -> Iterable[dict]:
+    """
+    Filters away all the porn domains from a given stream of records
+
+    Parameters
+    ----------
+    records: iterable of dict
+        Stream of records to be filtered
+    domains: set of str
+        Set of porn domains you want to filter from the records
+
+    Yields
+    ----------
+    record: dict
+        A record that does not belong to one of the porn domains
+    """
+    for record in records:
+        if record["domain_key"] not in domains:
+            yield record
+
+
 @reusable
 def stream_year(
     data_path: str,
     year: str,
-    porn_domains: Optional[Set[str]] = None,
-) -> Iterable[str]:
+) -> Iterable[dict]:
     """
-    Streams all texts from a given year.
+    Streams all records from a given year.
 
     Parameters
     ----------
     data_path: str
         Path to the dataset
     year: str
-        The year from which texts should be streamed.
-    porn_domains: set of str or None, default None
-        If provided, these domains will not be streamed.
+        The year from which records should be streamed.
 
     Yields
     ----------
-    text: str
-        Text content from the given year.
+    record: dict
+        Records from the given year.
     """
     for root, _, files in os.walk(os.path.join(data_path, f"{year}")):
         # Go through all files in the year directory
         for file in files:
-            # If it's a json file, stream all texts from it
+            # If it's a json file, stream all records from it
             if file.endswith(".jsonl"):
-                for text in stream_file(
-                    os.path.join(root, file),
-                    porn_domains=porn_domains,
-                ):
-                    yield text
+                records = stream_records_from_file(os.path.join(root, file))
+                for record in records:
+                    yield record
+
+
+@reusable
+def to_text_stream(records: Iterable[dict]) -> Iterable[str]:
+    """
+    Turns a stream of records to a stream of texts
+
+    Parameters
+    ----------
+    records: iterable of dict
+        Stream of records you want to turn into texts
+
+    Yields
+    ----------
+    text: str
+        Texts extracted from the records
+    """
+    for record in records:
+        yield record["text"]
 
 
 def get_porn_domains(data_path: str) -> Set[str]:
@@ -302,6 +373,35 @@ def get_porn_domains(data_path: str) -> Set[str]:
 
 
 @reusable
+def stream_all_records(data_path: str) -> Iterable[dict]:
+    """
+    Generator yielding all records from the dataset.
+
+    Parameters
+    ----------
+    data_path: str
+        Specifies where our data lives, where to get file contents from.
+    Yields
+    ----------
+    text: str
+        Cleaned text
+    """
+    # List of all years
+    years = get_years(data_path=data_path)
+    # Collects streams of all years into a list
+    year_streams = [stream_year(data_path, year) for year in years]
+    # Streams records from all years at the same time, so that the data is more shuffled
+    # We use the zip_longest function from itertools, so that we iterate as
+    # long as the longest iterable is not exhausted
+    # Once a shorter iterable is exhausted, we will get None values.
+    for records in zip_longest(*year_streams, fillvalue=None):
+        for record in records:
+            # If the record is not from an exhausted stream, we yield it
+            if record is not None:
+                yield record
+
+
+@reusable
 def stream_cleaned_texts(data_path: str, filter_porn=True) -> Iterable[str]:
     """
     Generator yielding all cleaned texts, that are not duplicates :)
@@ -319,26 +419,11 @@ def stream_cleaned_texts(data_path: str, filter_porn=True) -> Iterable[str]:
     text: str
         Cleaned text
     """
-    # In case we want to filter out porn, we load the set of unsafe sites from disk
+    records = stream_all_records(data_path)
     if filter_porn:
         porn_domains = get_porn_domains(data_path=data_path)
-    else:
-        porn_domains = None
-    # List of all years
-    years = get_years(data_path=data_path)
-    # Collects streams of all years into a list
-    year_streams = [
-        stream_year(data_path, year, porn_domains=porn_domains) for year in years
-    ]
-    # Streams texts from all years at the same time, so that the data is more shuffled
-    # We use the zip_longest function from itertools, so that we iterate as
-    # long as the longest iterable is not exhausted
-    # Once a shorter iterable is exhausted, we will get None values.
-    for texts in zip_longest(*year_streams, fillvalue=None):
-        for text in texts:
-            # If the text is not from an exhausted stream, we yield it
-            if text is not None:
-                yield text
+        records = filter_porn_domains(records, porn_domains)
+    return to_text_stream(records)
 
 
 T = TypeVar("T")
@@ -406,7 +491,9 @@ def document_stream(
 
 
 @reusable
-def tag_documents(doc_stream: Iterable[List[str]]) -> Iterable[TaggedDocument]:
+def tag_documents(
+    doc_stream: Iterable[List[str]], save_vectors: bool = False
+) -> Iterable[TaggedDocument]:
     """
     Turns a stream of documents to a stream of TaggedDocuments.
 
@@ -414,14 +501,25 @@ def tag_documents(doc_stream: Iterable[List[str]]) -> Iterable[TaggedDocument]:
     ----------
     doc_stream: iterable of list of str
         Stream of documents in the form of list of words.
+    save_vectors: bool, default False
+        Specifies whether the document vectors should be persisted to disk.
+        If False, all documents have the same tag.
 
     Yields
     ----------
     doc: TaggedDocument
         Document with tag added
+
+    Notes
+    ----------
+    For large corpora like Netarkivet, it does make sense to only save
+    model parameters but not the document vectors.
+    Document vectors can be inferred at will once the model is trained, thus
+    there is no need to store them. They also take an increasingly large amount of
+    space on the disk, which increases model loading times and takes up valuable disk space.
     """
     for tag, doc in doc_stream:
-        yield TaggedDocument(words=doc, tags=[tag])
+        yield TaggedDocument(words=doc, tags=[tag] if save_vectors else [0])
 
 
 @reusable

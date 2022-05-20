@@ -6,7 +6,8 @@ danlp
 Deprecated
 optuna
 pyldavis
-joblib
+joblib==1.1.0
+scikit-learn==1.1.1
 
 # style
 black
