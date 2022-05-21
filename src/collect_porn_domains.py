@@ -46,6 +46,7 @@ def main():
             .groupby("domains")
             .sum()
         )
+        current_counts = current_counts[current_counts["porn_counts"] != 0]
         # Clear out console
         os.system("clear")
         # Log results of current chunk
