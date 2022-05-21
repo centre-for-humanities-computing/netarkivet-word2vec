@@ -36,7 +36,7 @@ def main():
         print("START:")
         # I can totally do this as record_chunk is a list
         # I won't exhaust the stream
-        texts = to_text_stream(record_chunks)
+        texts = to_text_stream(record_chunk)
         domains = (record["domain_key"] for record in record_chunk)
         # Obtaining predictions with the topic-based porn classifier
         predictions = cls.predict(texts)
