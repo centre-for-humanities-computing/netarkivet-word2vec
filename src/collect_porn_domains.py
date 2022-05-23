@@ -16,7 +16,7 @@ TOPIC_MODEL = "nmf_100"
 TOPIC_MODEL_PATH = "/work/topic_model/"
 
 DATA_PATH = "/work/netarkivet-cleaned/"
-SAVE_PATH = f"/work/porn_domains/{TOPIC_MODEL}_porn_counts.csv"
+SAVE_PATH = f"/work/porn_domains/{TOPIC_MODEL}_porn_domains.csv"
 
 
 def main():

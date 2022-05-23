@@ -1,8 +1,11 @@
 """
 Main CLI script for training the Word2Vec model with the given hyperparameters
 """
+from itertools import islice
 import os
 import sys
+
+from utils.text import normalized_document
 
 # Silence imports
 sys.stdout = os.devnull
@@ -11,13 +14,16 @@ import warnings
 import wandb
 from gensim.models import Doc2Vec, Word2Vec
 
-from utils.evaluation import evaluate_word2vec
+from utils.evaluation import evaluate_doc2vec, evaluate_word2vec
 from utils.streams import (
     chunk,
     document_stream,
+    filter_porn_topic,
     sentence_stream,
+    stream_all_records,
     stream_cleaned_texts,
     tag_documents,
+    to_text_stream,
 )
 from utils.training import train
 
@@ -108,27 +114,7 @@ def create_parser() -> argparse.ArgumentParser:
         help="Dimensionality of the desired word vectors (optional,default=100)",
     )
     # RARELY IF EVER USED, and it clutters both the code and the CLI, so I decided to remove it
-    # parser.add_argument(
-    #     "--text_chunksize",
-    #     dest="text_chunksize",
-    #     nargs="?",
-    #     required=False,
-    #     default=100000,
-    #     type=int,
-    #     help="Size of chunks of text the model has to work on and shuffle (optional, "
-    #     + "default=100_000)",
-    # )
-    # parser.add_argument(
-    #     "--text_samplesize",
-    #     dest="text_samplesize",
-    #     nargs="?",
-    #     required=False,
-    #     default=150000,
-    #     type=int,
-    #     help="Size sample that has to be drawn randomly from each chunk (optional, "
-    #     + "default=150_000)",
-    # )
-
+    # --text_chunksize, --text_samplesize
     # Setting defaults instead
     parser.set_defaults(text_chunksize=TEXT_CHUNKSIZE, text_samplesize=TEXT_SAMPLESIZE)
     parser.add_argument(
@@ -152,7 +138,7 @@ def create_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = create_parser()
     args = parser.parse_args()
-    print("Initialising model")
+
     # Creating a dict for the hyperparameters, so that they are easier to log to Wandb
     # and it's easier to instantiate a model
     hyperparameters = {
@@ -160,6 +146,49 @@ def main() -> None:
         "window": args.window_size,
         "workers": args.training_workers,
     }
+
+    print("Initializing logging")
+    try:
+        # We try to log to wandb
+        wandb.init(
+            project=f"netarkivet-{args.model}", entity="chcaa", config=hyperparameters
+        )
+        log = "wandb"
+    except Exception:
+        # If we don't succeed, we log to stdout instead and warn the user
+        warnings.warn(
+            "Weights and biases could not be initialised, logging to stdout",
+            RuntimeWarning,
+        )
+        log = "stdout"
+
+    print("Initialising streaming")
+    # Streaming all records
+    records = stream_all_records(args.data_path)
+    # If the model id Doc2Vec, we have to separate a testing set for evaluation
+    if args.model == "doc2vec":
+        # Turning the records into an iterator, so that elements can be consumed
+        records = iter(records)
+        # Taking the first 20_000 elements
+        test_records = list(islice(records, 20_000))
+        test_texts = to_text_stream(test_records)
+        test_documents = [normalized_document(text) for text in test_texts]
+        test_domains = [record["domain_key"] for record in records]
+
+    # Turning records stream to text stream
+    texts = to_text_stream(records)
+    # Filtering porn based on topic when asked to
+    if args.filter_porn:
+        texts = filter_porn_topic(texts)
+    # Creating text chunk stream
+    text_chunks = chunk(
+        texts,
+        chunk_size=args.text_chunksize,
+        sample_size=args.text_samplesize,
+    )
+
+    print("Initialising model")
+
     # We add skip_gram as a hyperparameter if it is set to True in args
     if args.skip_gram:
         hyperparameters["sg"] = 1
@@ -172,17 +201,13 @@ def main() -> None:
             texts, workers=args.preprocessing_workers
         )
         wandb.config = hyperparameters
-        wandb_project = "netarkivet-word2vec"
     else:
-        # Since we don't have any other evaluation metrics for doc2vec than
-        # loss, it gives back an empty dict which can be then expanded
-        evaluate = lambda _: {}
+        evaluate = lambda model: evaluate_doc2vec(model, test_documents, test_domains)
         model_class = Doc2Vec
         # If we want to train doc2vec, we turn the stream of texts into a stream of TaggedDocuments
         preprocess = lambda texts: tag_documents(
             document_stream(texts, workers=args.preprocessing_workers)
         )
-        wandb_project = "netarkivet-doc2vec"
     # ----Initializing the model----
     try:
         # We try to load the specified model
@@ -196,26 +221,6 @@ def main() -> None:
             RuntimeWarning,
         )
         model = model_class(compute_loss=True, **hyperparameters)
-
-    # ----Initializing logging----
-    try:
-        # We try to log to wandb
-        wandb.init(project=wandb_project, entity="chcaa", config=hyperparameters)
-        log = "wandb"
-    except Exception:
-        # If we don't succeed, we log to stdout instead and warn the user
-        warnings.warn(
-            "Weights and biases could not be initialised, logging to stdout",
-            RuntimeWarning,
-        )
-        log = "stdout"
-
-    # ----Creating text chunk stream----
-    text_chunks = chunk(
-        stream_cleaned_texts(args.data_path, args.filter_porn),
-        chunk_size=args.text_chunksize,
-        sample_size=args.text_samplesize,
-    )
 
     print("Training sequence started")
     # ----Start training----

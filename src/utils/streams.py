@@ -13,6 +13,7 @@ from gensim.models.doc2vec import TaggedDocument
 
 import utils.text
 from utils.notebook import is_notebook
+from utils.topic import PornClassifier
 
 if is_notebook():
     print("Code running in a notebook, loading display tools")
@@ -267,27 +268,6 @@ def stream_records_from_file(file_path: str) -> Iterable[dict]:
                 yield record
 
 
-def filter_porn_domains(records: Iterable[dict], domains: Set[str]) -> Iterable[dict]:
-    """
-    Filters away all the porn domains from a given stream of records
-
-    Parameters
-    ----------
-    records: iterable of dict
-        Stream of records to be filtered
-    domains: set of str
-        Set of porn domains you want to filter from the records
-
-    Yields
-    ----------
-    record: dict
-        A record that does not belong to one of the porn domains
-    """
-    for record in records:
-        if record["domain_key"] not in domains:
-            yield record
-
-
 @reusable
 def stream_year(
     data_path: str,
@@ -372,6 +352,68 @@ def get_porn_domains(data_path: str) -> Set[str]:
     return set(unsafe_double_checked)
 
 
+def filter_porn_domains(records: Iterable[dict], domains: Set[str]) -> Iterable[dict]:
+    """
+    Filters away all the porn domains from a given stream of records
+
+    Parameters
+    ----------
+    records: iterable of dict
+        Stream of records to be filtered
+    domains: set of str
+        Set of porn domains you want to filter from the records
+
+    Yields
+    ----------
+    record: dict
+        A record that does not belong to one of the porn domains
+    """
+    for record in records:
+        if record["domain_key"] not in domains:
+            yield record
+
+
+DEFAULT_TOPIC_MODEL = "nmf_100"
+TOPIC_MODEL_PATH = "/work/topic_model/"
+
+
+def filter_porn_topic(
+    records: Iterable[dict], chunk_size: int = 150_000
+) -> Iterable[dict]:
+    """
+    Filters porn based on a precomputed NMF topic model.
+
+    Parameters
+    ----------
+    records: iterable of dict
+        Stream of records to be filtered
+    chunk_size: int, default 150_000
+        Chunk size of records that the model operates on.
+
+    Yields
+    ----------
+    record: dict
+        A record that doesn't contain porn texts
+
+    Notes
+    ----------
+    Since optimized linear algebra is involved,
+    you should set the chunk size to be reasonably high.
+
+    Operating on one text at a time would be really slow.
+    """
+    record_chunks = chunk(records, chunk_size)
+    # Loading topic model and vectorizer
+    cls = PornClassifier.load(DEFAULT_TOPIC_MODEL, TOPIC_MODEL_PATH)
+    for record_chunk in record_chunks:
+        texts = to_text_stream(record_chunk)
+        # Running porn detection for a chunk of records
+        predictions = cls.predict(texts)
+        for is_porn, record in zip(predictions, record_chunk):
+            if not is_porn:
+                yield record
+
+
 @reusable
 def stream_all_records(data_path: str) -> Iterable[dict]:
     """
@@ -401,6 +443,13 @@ def stream_all_records(data_path: str) -> Iterable[dict]:
                 yield record
 
 
+@deprecated(
+    reason="""
+    Phased out in favor of stream all records, so that control
+    is shifted towards a higher level of control flow.
+    text streams and porn filtering are conduted at the top level.-
+    """
+)
 @reusable
 def stream_cleaned_texts(data_path: str, filter_porn=True) -> Iterable[str]:
     """
@@ -421,8 +470,9 @@ def stream_cleaned_texts(data_path: str, filter_porn=True) -> Iterable[str]:
     """
     records = stream_all_records(data_path)
     if filter_porn:
-        porn_domains = get_porn_domains(data_path=data_path)
-        records = filter_porn_domains(records, porn_domains)
+        records = filter_porn_topic(records)
+        # porn_domains = get_porn_domains(data_path=data_path)
+        # records = filter_porn_domains(records, porn_domains)
     return to_text_stream(records)
 
 
