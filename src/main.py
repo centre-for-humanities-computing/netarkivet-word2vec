@@ -1,16 +1,17 @@
 """
 Main CLI script for training the Word2Vec model with the given hyperparameters
 """
-from itertools import islice
-import os
-import sys
-
-from utils.text import normalized_document
-
-# Silence imports
-sys.stdout = os.devnull
 import argparse
+import os
 import warnings
+from itertools import islice
+
+import numpy as np
+
+# I'm doing this cause Numpy throws a warning to stderr otherwise
+# Which is not exactly great when you wanna call -h let's say
+np.finfo(np.dtype("float32"))
+np.finfo(np.dtype("float64"))
 import wandb
 from gensim.models import Doc2Vec, Word2Vec
 
@@ -21,18 +22,15 @@ from utils.streams import (
     filter_porn_topic,
     sentence_stream,
     stream_all_records,
-    stream_cleaned_texts,
     tag_documents,
     to_text_stream,
 )
+from utils.text import normalized_document
 from utils.training import train
 
 DATA_PATH = "/work/netarkivet-cleaned/"
 TEXT_CHUNKSIZE = 100_000
 TEXT_SAMPLESIZE = 150_000
-
-# Unsilence stdout
-sys.stdout = sys.__stdout__
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -50,14 +48,15 @@ def create_parser() -> argparse.ArgumentParser:
         nargs="?",
         default="word2vec",
         type=str,
-        help="Specifies which model should be trained on the corpus"
-        + "(options: {'word2vec', 'doc2vec'} optional,default=word2vec)",
+        help="""
+        Specifies whether doc2vec or word2vec should be trained on the corpus
+        (optional,default=word2vec)
+        """,
     )
     parser.add_argument(
         "-d",
         "--data_path",
         dest="data_path",
-        nargs="?",
         required=False,
         type=str,
         default=DATA_PATH,
@@ -67,51 +66,137 @@ def create_parser() -> argparse.ArgumentParser:
         "-s",
         "--save_path",
         dest="save_path",
-        required=True,
+        required=False,
         type=str,
-        help="Path, where the model is going to be saved and where the model is "
-        + "initialised from",
+        default=None,
+        help="""
+        Path, where the model is going to be saved and where the model is initialised from.
+        (optional, default=None)
+        """,
     )
     parser.add_argument(
         "-p",
         "--preprocessing_workers",
         dest="preprocessing_workers",
-        nargs="?",
         required=False,
-        default=6,
+        default=2,
         type=int,
-        help="Number of processes assigned to preprocess strings for training (optional,"
-        + "default=6)",
+        help="""
+        Number of processes assigned to preprocess strings for training
+        (optional, default=2)
+        """,
     )
     parser.add_argument(
         "-t",
         "--training_workers",
         dest="training_workers",
-        nargs="?",
         required=False,
         default=6,
         type=int,
-        help="Number of processes assigned to train the model (optional,default=6)",
+        help="""
+        Number of processes assigned to train the model
+        (optional, default=6)
+        """,
     )
     parser.add_argument(
         "-w",
-        "--window_size",
-        dest="window_size",
-        nargs="?",
+        "--window",
+        dest="window",
         required=False,
         default=5,
         type=int,
-        help="Window size of the work2vec model (optional,default=5)",
+        help="""
+        Maximum distance between the current and predicted word within a sentence.
+        (optional, default=5)
+        """,
     )
     parser.add_argument(
         "-v",
         "--vector_size",
         dest="vector_size",
-        nargs="?",
         required=False,
         default=100,
         type=int,
-        help="Dimensionality of the desired word vectors (optional,default=100)",
+        help="""
+        Dimensionality of the desired word vectors.
+        (optional, default=100)
+        """,
+    )
+    parser.add_argument(
+        "--sg",
+        dest="sg",
+        required=False,
+        default=0,
+        type=int,
+        help="""
+        Training algorithm: 1 for skip-gram; otherwise CBOW.
+        (optional, default=0)
+        """,
+    )
+    parser.add_argument(
+        "--negative",
+        dest="negative",
+        required=False,
+        default=5,
+        type=int,
+        help="""
+        If > 0, negative sampling will be used,
+        the int for negative specifies how many “noise words” should be drawn
+        (usually between 5-20).
+        If set to 0, no negative sampling is used.
+        (optional, default=5)
+        """,
+    )
+    parser.add_argument(
+        "--hs",
+        dest="hs",
+        required=False,
+        default=0,
+        type=int,
+        help="""
+        If 1, hierarchical softmax will be used for model training.
+        If 0, and negative is non-zero, negative sampling will be used.
+        (optional, default=0)
+        """,
+    )
+    parser.add_argument(
+        "--ns_exponent",
+        dest="ns_exponent",
+        required=False,
+        default=0.75,
+        type=float,
+        help="""
+        The exponent used to shape the negative sampling distribution.
+        A value of 1.0 samples exactly in proportion to the frequencies,
+        0.0 samples all words equally,
+        while a negative value samples low-frequency words more than
+        high-frequency words.
+        (optional, default=0.75) 
+        """,
+    )
+    parser.add_argument(
+        "--cbow_mean",
+        dest="cbow_mean",
+        required=False,
+        default=1,
+        type=int,
+        help="""
+        If 0, use the sum of the context word vectors.
+        If 1, use the mean, only applies when cbow is used.
+        (optional, default=1) 
+        """,
+    )
+    parser.add_argument(
+        "--n_chunks",
+        dest="n_chunks",
+        required=False,
+        default=None,
+        type=int,
+        help="""
+        Specifies how many chunks should be used to train the model.
+        If not specified the model will be trained on the entire corpus.
+        (optional, default=None)
+        """,
     )
     # RARELY IF EVER USED, and it clutters both the code and the CLI, so I decided to remove it
     # --text_chunksize, --text_samplesize
@@ -125,13 +210,6 @@ def create_parser() -> argparse.ArgumentParser:
         help="Flag to turn of porn filtering",
     )
     parser.set_defaults(filter_porn=True)
-    parser.add_argument(
-        "-g",
-        "--skip_gram",
-        action="store_true",
-        help="Flag to force Word2Vec to use skip-gram instead of CBOW",
-    )
-    parser.set_defaults(skip_gram=False)
     return parser
 
 
@@ -143,8 +221,13 @@ def main() -> None:
     # and it's easier to instantiate a model
     hyperparameters = {
         "vector_size": args.vector_size,
-        "window": args.window_size,
+        "window": args.window,
         "workers": args.training_workers,
+        "sg": args.sg,
+        "negative": args.negative,
+        "hs": args.hs,
+        "ns_exponent": args.ns_exponent,
+        "cbow_mean": args.cbow_mean,
     }
 
     print("Initializing logging")
@@ -186,12 +269,10 @@ def main() -> None:
         chunk_size=args.text_chunksize,
         sample_size=args.text_samplesize,
     )
+    if args.n_chunks is not None:
+        text_chunks = islice(text_chunks, args.n_chunks)
 
     print("Initialising model")
-
-    # We add skip_gram as a hyperparameter if it is set to True in args
-    if args.skip_gram:
-        hyperparameters["sg"] = 1
     # Check whether we want to train a word2vec or a doc2vec
     if args.model == "word2vec":
         evaluate = evaluate_word2vec

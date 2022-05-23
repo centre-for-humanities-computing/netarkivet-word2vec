@@ -1,4 +1,6 @@
 """
+DEPRECATED: This script is being phased out in favor of the main script running
+with Wandb sweep instead.
 Script for optimizng hyperparameters of the Word2Vec model
 """
 from itertools import islice

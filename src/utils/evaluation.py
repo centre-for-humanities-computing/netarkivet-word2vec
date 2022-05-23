@@ -165,6 +165,8 @@ def evaluate_word2vec(model: Word2Vec) -> Dict[str, float]:
         "W353 similarities Spearman's ρ": spearman_ws353[0],
         "W353 similarities p-value": spearman_ws353[1],
         "W353 similarities out of vocabulary %": oov_ws353,
+        # Balanced metric to use as for hyperparameter optimization
+        "balanced_score": 1.5 * spearman_dsd[0] + spearman_ws353[0] + 0.2 * odd,
     }
 
 
