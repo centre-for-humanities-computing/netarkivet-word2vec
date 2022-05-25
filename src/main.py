@@ -302,14 +302,17 @@ def main() -> None:
             RuntimeWarning,
         )
         model = model_class(compute_loss=True, **hyperparameters)
-
+    if args.save_path is not None:
+        save_path = os.path.join(args.save_path, f"{args.model}.model")
+    else:
+        save_path = None
     print("Training sequence started")
     # ----Start training----
     for loss in train(
         model=model,
         text_chunks=text_chunks,
         preprocessing=preprocess,
-        save_path=os.path.join(args.save_path, f"{args.model}.model"),
+        save_path=save_path,
     ):
         # For each chunk we log the evaluation results
         logging_info = {**evaluate(model), "Loss": loss}
