@@ -229,6 +229,11 @@ def main() -> None:
         "ns_exponent": args.ns_exponent,
         "cbow_mean": args.cbow_mean,
     }
+    if args.model == "doc2vec":
+        # If we use doc2vec we have to remove the following parameters
+        # Unfortunatelly gensim's API does not tolerate them :((
+        hyperparameters.pop("sg")
+        hyperparameters.pop("cbow_mean")
 
     print("Initializing logging")
     try:
