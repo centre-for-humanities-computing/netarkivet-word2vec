@@ -19,7 +19,7 @@ from utils.evaluation import evaluate_doc2vec, evaluate_word2vec
 from utils.streams import (
     chunk,
     document_stream,
-    filter_porn_topic,
+    filter_porn_records,
     sentence_stream,
     stream_all_records,
     tag_documents,
@@ -248,7 +248,7 @@ def main() -> None:
     print("Initialising streaming")
     # Streaming all records
     records = stream_all_records(args.data_path)
-    # If the model id Doc2Vec, we have to separate a testing set for evaluation
+    # If the model is Doc2Vec, we have to separate a testing set for evaluation
     if args.model == "doc2vec":
         # Turning the records into an iterator, so that elements can be consumed
         records = iter(records)
@@ -262,7 +262,7 @@ def main() -> None:
     texts = to_text_stream(records)
     # Filtering porn based on topic when asked to
     if args.filter_porn:
-        texts = filter_porn_topic(texts)
+        texts = filter_porn_records(texts)
     # Creating text chunk stream
     text_chunks = chunk(
         texts,

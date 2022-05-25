@@ -71,13 +71,13 @@ def reusable(gen_func: Callable) -> Callable:
     return _multigen
 
 
-T = TypeVar("T")
+U = TypeVar("U")
 
 
 @reusable
 def chunk(
-    iterable: Iterable[T], chunk_size: int, sample_size: Optional[int] = None
-) -> Iterable[List[T]]:
+    iterable: Iterable[U], chunk_size: int, sample_size: Optional[int] = None
+) -> Iterable[List[U]]:
     """
     Generator function that chunks an iterable for you.
 
@@ -138,11 +138,11 @@ BAR_LENGTH = 100
 N_DECIMALS = 1
 FILL_CHARACTER = "█"
 
-U = TypeVar("U")
+I = TypeVar("I")
 
 
 @reusable
-def progress_bar_stream(items: List[U]) -> Iterable[U]:
+def progress_bar_stream(items: List[I]) -> Iterable[I]:
     """
     Wraps list in an iterable that shows a progress bar and the current element.
 
@@ -291,7 +291,7 @@ def stream_year(
     for root, _, files in os.walk(os.path.join(data_path, f"{year}")):
         # Go through all files in the year directory
         for file in files:
-            # If it's a json file, stream all records from it
+            # If it's a jsonl file, stream all records from it
             if file.endswith(".jsonl"):
                 records = stream_records_from_file(os.path.join(root, file))
                 for record in records:
@@ -377,7 +377,7 @@ DEFAULT_TOPIC_MODEL = "nmf_100"
 TOPIC_MODEL_PATH = "/work/topic_model/"
 
 
-def filter_porn_topic(
+def filter_porn_records(
     records: Iterable[dict], chunk_size: int = 150_000
 ) -> Iterable[dict]:
     """
@@ -425,8 +425,8 @@ def stream_all_records(data_path: str) -> Iterable[dict]:
         Specifies where our data lives, where to get file contents from.
     Yields
     ----------
-    text: str
-        Cleaned text
+    record: dict
+        All records
     """
     # List of all years
     years = get_years(data_path=data_path)
@@ -476,10 +476,10 @@ def stream_cleaned_texts(data_path: str, filter_porn=True) -> Iterable[str]:
     return to_text_stream(records)
 
 
-T = TypeVar("T")
+V = TypeVar("V")
 
 
-def reservoir_sample(stream: Iterable[T], sample_size: int) -> List[T]:
+def reservoir_sample(stream: Iterable[V], sample_size: int) -> List[V]:
     """
     Samples a given number of items randomly from a stream of unknown length.
     An implementation of Algorithm R by Alan Waterman.
@@ -568,7 +568,7 @@ def tag_documents(
     there is no need to store them. They also take an increasingly large amount of
     space on the disk, which increases model loading times and takes up valuable disk space.
     """
-    for tag, doc in doc_stream:
+    for tag, doc in enumerate(doc_stream):
         yield TaggedDocument(words=doc, tags=[tag] if save_vectors else [0])
 
 
