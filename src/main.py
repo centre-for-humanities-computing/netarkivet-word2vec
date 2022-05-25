@@ -294,7 +294,7 @@ def main() -> None:
         # We try to load the specified model
         model = model_class.load(os.path.join(args.save_path, f"{args.model}.model"))
         print("Loading model from save path")
-    except FileNotFoundError:
+    except (FileNotFoundError, TypeError):
         # If loading fails, we throw a warning to the user, and initiate the model
         # with the given hyperparameters
         warnings.warn(
