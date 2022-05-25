@@ -174,7 +174,7 @@ def evaluate_doc2vec(
     model: Doc2Vec,
     documents: List[List[str]],
     domain_keys: List[str],
-    n_splits: int = 20,
+    n_splits: int = 5,
 ) -> Dict[str, float]:
     """
     Evaluates the Doc2Vec model on the task of domain classification
