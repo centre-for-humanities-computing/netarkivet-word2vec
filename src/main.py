@@ -256,7 +256,7 @@ def main() -> None:
         test_records = list(islice(records, 20_000))
         test_texts = to_text_stream(test_records)
         test_documents = [normalized_document(text) for text in test_texts]
-        test_domains = [record["domain_key"] for record in records]
+        test_domains = [record["domain_key"] for record in test_records]
 
     # Filtering porn based on topic when asked to
     if args.filter_porn:
