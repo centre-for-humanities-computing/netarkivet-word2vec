@@ -210,7 +210,7 @@ def evaluate_doc2vec(
         X_train, X_test = X[train_indices], X[test_indices]
         y_train, y_test = y[train_indices], y[test_indices]
         classifier = LogisticRegression().fit(X_train, y_train)
-        y_pred = classifier.predict(y_test)
+        y_pred = classifier.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
         accuracies.append(accuracy)
     cv_accuracy = np.mean(accuracies)
