@@ -258,11 +258,12 @@ def main() -> None:
         test_documents = [normalized_document(text) for text in test_texts]
         test_domains = [record["domain_key"] for record in records]
 
-    # Turning records stream to text stream
-    texts = to_text_stream(records)
     # Filtering porn based on topic when asked to
     if args.filter_porn:
-        texts = filter_porn_records(texts)
+        records = filter_porn_records(records)
+
+    # Turning records stream to text stream
+    texts = to_text_stream(records)
     # Creating text chunk stream
     text_chunks = chunk(
         texts,
