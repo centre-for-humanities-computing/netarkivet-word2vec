@@ -7,7 +7,6 @@ import json
 import os
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Tuple, Union
-from cv2 import threshold
 
 import joblib
 import numpy as np
@@ -151,7 +150,7 @@ class PornClassifier:
             return topic_labels == self.porn_id
         else:
             porn_values = topic_embeddings[:, self.porn_id]
-            return porn_values > threshold
+            return porn_values > self.threshold
 
     @classmethod
     def load(
