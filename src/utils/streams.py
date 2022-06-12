@@ -375,6 +375,7 @@ def filter_porn_domains(records: Iterable[dict], domains: Set[str]) -> Iterable[
 
 DEFAULT_TOPIC_MODEL = "nmf_100"
 TOPIC_MODEL_PATH = "/work/topic_model/"
+PORN_THRESHOLD = 0.0002
 
 
 def filter_porn_records(
@@ -404,7 +405,7 @@ def filter_porn_records(
     """
     record_chunks = chunk(records, chunk_size)
     # Loading topic model and vectorizer
-    cls = PornClassifier.load(DEFAULT_TOPIC_MODEL, TOPIC_MODEL_PATH)
+    cls = PornClassifier.load(DEFAULT_TOPIC_MODEL, TOPIC_MODEL_PATH, PORN_THRESHOLD)
     for record_chunk in record_chunks:
         texts = to_text_stream(record_chunk)
         # Running porn detection for a chunk of records
@@ -441,39 +442,6 @@ def stream_all_records(data_path: str) -> Iterable[dict]:
             # If the record is not from an exhausted stream, we yield it
             if record is not None:
                 yield record
-
-
-@deprecated(
-    reason="""
-    Phased out in favor of stream all records, so that control
-    is shifted towards a higher level of control flow.
-    text streams and porn filtering are conduted at the top level.-
-    """
-)
-@reusable
-def stream_cleaned_texts(data_path: str, filter_porn=True) -> Iterable[str]:
-    """
-    Generator yielding all cleaned texts, that are not duplicates :)
-
-    Parameters
-    ----------
-    data_path: str
-        Specifies where our data lives, where to get file contents from.
-    filter_porn: bool, default True
-        Specifies whether suspected porn domains should be left
-        out of the stream.
-
-    Yields
-    ----------
-    text: str
-        Cleaned text
-    """
-    records = stream_all_records(data_path)
-    if filter_porn:
-        records = filter_porn_topic(records)
-        # porn_domains = get_porn_domains(data_path=data_path)
-        # records = filter_porn_domains(records, porn_domains)
-    return to_text_stream(records)
 
 
 V = TypeVar("V")

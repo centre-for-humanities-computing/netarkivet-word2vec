@@ -7,6 +7,7 @@ import json
 import os
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Tuple, Union
+from cv2 import threshold
 
 import joblib
 import numpy as np
@@ -97,11 +98,36 @@ class PornClassifier:
         The topic model used to determine which topic the text belongs to
     porn_id: int
         Id of the porn topic
+    threshold: float or None, default None
+        If given, everything having a porn topic value over the
+        threshold will be classified as porn, if not
+        topic labels are assigned based on which topic scores highest,
+        and only those will be classified as porn, where the porn topic
+        scores highest.
     """
 
     vectorizer: TfidfVectorizer
     topic_model: Union[NMF, LatentDirichletAllocation]
     porn_id: int
+    threshold: Optional[float]
+
+    def transform(self, texts: Iterable[str]) -> np.ndarray:
+        """
+        Transforms texts into topic vectors.
+
+        Parameters
+        ----------
+        texts: iterable of str
+            A stream of strings to transform
+
+        Returns
+        ----------
+        topic_embedings: ndarray of shape (n_texts, n_topics)
+            Matrix of topic embeddings.
+        """
+        tf_idf_matrix = self.vectorizer.transform(texts)
+        topic_embeddings = self.topic_model.transform(tf_idf_matrix)
+        return topic_embeddings
 
     def predict(self, texts: Iterable[str]) -> np.ndarray:
         """
@@ -117,14 +143,22 @@ class PornClassifier:
         is_porn: ndarray of bool of shape (n_texts,)
             A numpy array containing whether each text is porn or not
         """
-        tf_idf_matrix = self.vectorizer.transform(texts)
-        topic_embeddings = self.topic_model.transform(tf_idf_matrix)
-        topic_labels = np.argmax(topic_embeddings, axis=1)
-        return topic_labels == self.porn_id
+        topic_embeddings = self.transform(texts)
+        if self.threshold is None:
+            # If no threshold given, the topic label is chosen by seeing which topic
+            # Has the maximum value and comparing it against the porn topic id
+            topic_labels = np.argmax(topic_embeddings, axis=1)
+            return topic_labels == self.porn_id
+        else:
+            porn_values = topic_embeddings[:, self.porn_id]
+            return porn_values > threshold
 
     @classmethod
     def load(
-        cls, model_name: str, load_path: str = "/work/topic_model/"
+        cls,
+        model_name: str,
+        load_path: str = "/work/topic_model/",
+        threshold: Optional[float] = None,
     ) -> PornClassifier:
         """
         Loads a given topic model from the given path and given model name.
@@ -152,5 +186,5 @@ class PornClassifier:
             textual_content = json_file.read()
             porn_id_mapping = json.loads(textual_content)
         porn_id = porn_id_mapping[model_name]
-        classifier = cls(vectorizer, topic_model, porn_id)
+        classifier = cls(vectorizer, topic_model, porn_id, threshold)
         return classifier

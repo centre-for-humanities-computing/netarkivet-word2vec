@@ -189,7 +189,7 @@ def evaluate_doc2vec(
         List of documents to evaluate the model on
     domain_keys: list of str
         List of domains to be used as labels for classification
-    n_splits: int, default 20
+    n_splits: int, default 5
         Number of splits the KFold cross validation should do
 
     Returns
