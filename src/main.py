@@ -209,6 +209,17 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_false",
         help="Flag to turn of porn filtering",
     )
+    parser.add_argument(
+        "--min_count",
+        dest="min_count",
+        required=False,
+        default=100,
+        type=int,
+        help="""
+        Ignores all words with total frequency lower than this.
+        (optional, default=100)
+        """,
+    )
     parser.set_defaults(filter_porn=True)
     return parser
 
@@ -228,6 +239,7 @@ def main() -> None:
         "hs": args.hs,
         "ns_exponent": args.ns_exponent,
         "cbow_mean": args.cbow_mean,
+        "min_count": args.min_count,
     }
     if args.model == "doc2vec":
         # If we use doc2vec we have to remove the following parameters

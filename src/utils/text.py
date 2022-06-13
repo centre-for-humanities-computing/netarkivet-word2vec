@@ -3,6 +3,9 @@ import re
 import string
 from typing import List
 
+from utils.quality import quality_filter
+from utils.streams import flatten
+
 
 def only_dots(text: str) -> str:
     """
@@ -35,7 +38,7 @@ def remove_digits(text: str) -> str:
     text: str
         New string without digits
     """
-    return text.translate(str.maketrans("", "", string.digits))
+    return text.translate(str.maketrans(string.digits, " " * len(string.digits)))
 
 
 PUNCT = "\"#$%&'()*+,-/:<=>@[\\]^_`{|}~"
@@ -66,7 +69,7 @@ def remove_punctuation(text: str, keep_sentences: bool) -> str:
     return text.translate(str.maketrans(punctuation, " " * len(punctuation)))
 
 
-DANISH_CHARACTERS = string.printable + "åæøÅÆØéáÁÈ"
+DANISH_CHARACTERS = string.printable + "åæøÅÆØéáÁÉ"
 
 
 def normalize(text: str, keep_sentences: bool) -> str:
@@ -93,8 +96,8 @@ def normalize(text: str, keep_sentences: bool) -> str:
     non_danish = re.compile(f"[^{DANISH_CHARACTERS}]")
     text = re.sub(non_danish, " ", text)
     # Strips accents
-    #table = str.maketrans({"é": "e'", "á": "a'"})
-    #text = text.translate(table)
+    # table = str.maketrans({"é": "e'", "á": "a'"})
+    # text = text.translate(table)
     return text
 
 
@@ -118,6 +121,7 @@ def tokenize(text: str) -> List[str]:
 def sentencize(text: str) -> List[List[str]]:
     """
     Cleans up the text, sentencizes and tokenizes it.
+    Runs quality filter.
 
     Parameters
     ----------
@@ -128,10 +132,13 @@ def sentencize(text: str) -> List[List[str]]:
     ----------
     sentences: list of list of str
         List of sentences in the form of list of tokens.
+        If the text doesn't pass the quality filter,
+        an empty list is returned.
     """
     norm_text = normalize(text, keep_sentences=True)
     sentences = only_dots(norm_text).split(".")
-    return [tokenize(sentence) for sentence in sentences]
+    document = [tokenize(sentence) for sentence in sentences]
+    return quality_filter(document)
 
 
 def normalized_document(text: str) -> List[str]:
@@ -148,5 +155,7 @@ def normalized_document(text: str) -> List[str]:
     tokens: list of str
         List of tokens in the text.
     """
-    norm_text = normalize(text, keep_sentences=False)
-    return tokenize(norm_text)
+    sentences = sentencize(text)
+    if not sentences:
+        return []
+    return list(flatten(sentences))

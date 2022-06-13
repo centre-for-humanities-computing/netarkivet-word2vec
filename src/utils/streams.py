@@ -1,4 +1,5 @@
 """ Module containing several useful streaming tools, both general and project related. """
+import functools
 import json
 import multiprocessing
 import os
@@ -57,11 +58,13 @@ def reusable(gen_func: Callable) -> Callable:
         Sneakily created iterator class wrapping the generator function
     """
 
+    @functools.wraps(gen_func, updated=())
     class _multigen:
         def __init__(self, *args, limit=None, **kwargs):
             self.__args = args
             self.__kwargs = kwargs
             self.limit = limit
+            # functools.update_wrapper(self, gen_func)
 
         def __iter__(self):
             if self.limit is not None:
@@ -505,7 +508,8 @@ def document_stream(
             utils.text.normalized_document, texts, chunksize=chunksize
         )
         for doc in docs:
-            yield doc
+            if doc:
+                yield doc
 
 
 @reusable
@@ -568,6 +572,6 @@ def sentence_stream(
         # Word2Vec, in fact it's better if they are shuffled
         # This stream is going to be chunked and sampled anyway
         for doc in docs:
-            for sentence in doc:
-                if sentence:
+            if doc:
+                for sentence in doc:
                     yield sentence

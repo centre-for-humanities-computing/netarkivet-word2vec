@@ -13,14 +13,6 @@ from sklearn.linear_model import LogisticRegression
 
 from utils.text import normalize
 
-# Loading DataFrame with odd-one-out tests
-odd_df = pd.read_csv("../evaluation/odd_one_out.csv")
-odd_one_out = odd_df.to_numpy().tolist()
-
-# Loading similarity Datasets
-ws353 = WordSim353Da()
-dsd = DSD()
-
 
 def is_in_vocab(words: Iterable[str], model: Word2Vec) -> np.ndarray:
     """
@@ -58,6 +50,9 @@ def accuracy_odd_one_out(model: Word2Vec) -> float:
     accuracy: float
         Accuracy on the odd-one-out test
     """
+    # Loading DataFrame with odd-one-out tests
+    odd_df = pd.read_csv("../evaluation/odd_one_out.csv")
+    odd_one_out = odd_df.to_numpy().tolist()
     accurate = 0
     for words in odd_one_out:
         words = words[1:]
@@ -150,6 +145,10 @@ def evaluate_word2vec(model: Word2Vec) -> Dict[str, float]:
         A dictionary containing score on the odd-one-out test,
         spearman's rho, p-value and vocabulary coverage of the similarity tests.
     """
+    # Loading similarity Datasets
+    ws353 = WordSim353Da()
+    dsd = DSD()
+
     odd = accuracy_odd_one_out(model)
     _, spearman_dsd, oov_dsd = model.wv.evaluate_word_pairs(
         dsd.file_path, delimiter="\t"

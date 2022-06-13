@@ -1,6 +1,7 @@
 wandb/
 wandb.key
 dat/
+docs/
 
 # Python
 *.pyc
